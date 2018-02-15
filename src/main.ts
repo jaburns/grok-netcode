@@ -56,7 +56,7 @@ const newClient = (server:any):any => {
 
             let matchIndex = inputStack.length;
             while (--matchIndex >= 0) {
-                if (serverState.players[clientId].lastInput == inputStack[matchIndex].id) break;
+                if (serverState.players[clientId].lastInput == inputStack[matchIndex].uid) break;
             }
 
             if (matchIndex >= 0) {
@@ -69,7 +69,7 @@ const newClient = (server:any):any => {
         update: () => {
             if (state == null) return;
 
-            const latestInput = getLatestInputs(PlayerInputScheme.Arrows);
+            const latestInput = getLatestInputs(clientId%2 ? PlayerInputScheme.WASD : PlayerInputScheme.Arrows);
             state = predictWorldState(latestInput, clientId, state);
             inputStack.push(latestInput);
 
@@ -79,7 +79,7 @@ const newClient = (server:any):any => {
 
             delayedInvoke(server.receiveInput, {input:latestInput, id:clientId});
 
-            renderGameState(ctx, state, 'Client '+clientId);
+            renderGameState(ctx, state, 'Client '+clientId+(clientId%2 ? ' (WASD)' : ' (Arrows)'));
         }
     };
 

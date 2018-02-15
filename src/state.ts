@@ -22,7 +22,7 @@ export const newWorldState = (): GameState => ({
 
 export const newPlayerState = (): PlayerState => ({
     latestInput: "",
-    position: {x: 100, y: 100},
+    position: {x: 50 + Math.random()*100, y: 50 + Math.random()*100},
     velocity: {x: 0, y: 0},
     rotation: 0
 });
@@ -46,7 +46,7 @@ const stepPlayerState = (input:any, playerState:any):any => {
         result.position.y += 10*sin;
     }
 
-    result.lastInput = input.id;
+    result.lastInput = input.uid;
 
     return result;
 };
