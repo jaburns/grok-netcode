@@ -1,0 +1,14 @@
+{
+  "name": "grok-netcode",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "build": "webpack"
+  },
+  "devDependencies": {
+    "awesome-typescript-loader": "^3.4.1",
+    "express": "^4.16.2",
+    "typescript": "^2.7.1",
+    "webpack": "^3.11.0"
+  }
+}
