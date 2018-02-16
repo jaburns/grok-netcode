@@ -1,3 +1,4 @@
 node_modules/
-docs/bundle.js.map
+public/bundle.js.map
+public/bundle.js
 package-lock.json
