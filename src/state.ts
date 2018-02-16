@@ -1,4 +1,6 @@
-import { PlayerInputUID } from './input';
+import { PlayerInput } from './input';
+import { UIDMap } from './utils';
+import cloneDeep = require('lodash/cloneDeep');
 
 export interface Vec2 {
     x: number;
@@ -6,29 +8,29 @@ export interface Vec2 {
 }
 
 export interface PlayerState {
-    latestInput: PlayerInputUID;
+    lastInputUID: string;
     position: Vec2;
     velocity: Vec2;
     rotation: number;
 }
 
 export interface GameState {
-    players: PlayerState[];
+    players: {[playerUID: string]: PlayerState};
 }
 
-export const newWorldState = (): GameState => ({ 
-    players: [] 
+export const newGameState = (): GameState => ({ 
+    players: {}
 });
 
 export const newPlayerState = (): PlayerState => ({
-    latestInput: "",
+    lastInputUID: "",
     position: {x: 50 + Math.random()*100, y: 50 + Math.random()*100},
     velocity: {x: 0, y: 0},
     rotation: 0
 });
 
-const stepPlayerState = (input:any, playerState:any):any => {
-    const result = JSON.parse(JSON.stringify(playerState));
+const stepPlayerState = (input: PlayerInput, playerState: PlayerState): PlayerState => {
+    const result = cloneDeep(playerState);
 
     if (input.left) {
         result.rotation -= 10;
@@ -46,23 +48,23 @@ const stepPlayerState = (input:any, playerState:any):any => {
         result.position.y += 10*sin;
     }
 
-    result.lastInput = input.uid;
+    result.lastInputUID = input.uid;
 
     return result;
 };
 
-export const stepWorldState = (inputs:any, worldState:any):any => {
-    const result = JSON.parse(JSON.stringify(worldState));
+export const stepGameState = (inputMap: UIDMap<PlayerInput>, gameState: GameState): GameState => {
+    const result = cloneDeep(gameState);
 
-    for (let i = 0; i < result.players.length; ++i) {
-        result.players[i] = stepPlayerState(inputs[i], result.players[i]);
+    for (let playerUID in result.players) {
+        result.players[playerUID] = stepPlayerState(inputMap[playerUID], result.players[playerUID]);
     }
 
     return result;
 };
 
-export const predictWorldState = (input:any, playerId:any, worldState:any):any => {
-    const result = JSON.parse(JSON.stringify(worldState));
-    result.players[playerId] = stepPlayerState(input, result.players[playerId]);
+export const predictGameState = (input: PlayerInput, playerUID: string, worldState: GameState): GameState => {
+    const result = cloneDeep(worldState);
+    result.players[playerUID] = stepPlayerState(input, result.players[playerUID]);
     return result;
 };

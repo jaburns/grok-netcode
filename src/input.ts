@@ -1,8 +1,7 @@
-
-export type PlayerInputUID = string;
+import { generateUID } from './utils';
 
 export interface PlayerInput {
-    uid: PlayerInputUID;
+    uid: string;
     up: boolean;
     down: boolean;
     left: boolean;
@@ -11,6 +10,7 @@ export interface PlayerInput {
 }
 
 export enum PlayerInputScheme {
+    Nothing,
     WASD,
     Arrows
 }
@@ -19,9 +19,6 @@ const keys: {[keyCode:number]: true} = {};
 
 document.onkeydown = e => keys[e.keyCode] = true;
 document.onkeyup = e => delete keys[e.keyCode];
-
-const generateUID = (): PlayerInputUID =>
-    Math.random().toString(36).substr(2);
 
 const getLatestWASD = (): PlayerInput => ({
     up:    keys[87] === true,
@@ -41,7 +38,19 @@ const getLatestArrows = (): PlayerInput => ({
     uid:   generateUID()
 });
 
-export const getLatestInputs = (scheme: PlayerInputScheme): PlayerInput =>
-    scheme === PlayerInputScheme.WASD
-        ? getLatestWASD()
-        : getLatestArrows();
+const getEmptyInput = (): PlayerInput => ({
+    up:    false,
+    down:  false,
+    left:  false,
+    right: false,
+    shoot: false,
+    uid:   generateUID()
+});
+
+export const getLatestInputs = (scheme: PlayerInputScheme): PlayerInput => {
+    switch (scheme) {
+        case PlayerInputScheme.WASD: return getLatestWASD();
+        case PlayerInputScheme.Arrows: return getLatestArrows();
+    }
+    return getEmptyInput();
+};

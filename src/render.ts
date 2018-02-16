@@ -33,8 +33,8 @@ export const createCanvas = (): CanvasRenderingContext2D => {
 export const renderGameState = (ctx: CanvasRenderingContext2D, gameState: GameState , title: string): void => {
     ctx.clearRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
 
-    for (let i = 0; i < gameState.players.length; ++i) {
-        renderPlayerState(ctx, gameState.players[i]);
+    for (let playerUID in gameState.players) {
+        renderPlayerState(ctx, gameState.players[playerUID]);
     }
 
     ctx.font = '12px monospace';

@@ -7,8 +7,10 @@
     "watch": "webpack --watch"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.103",
     "awesome-typescript-loader": "^3.4.1",
     "express": "^4.16.2",
+    "lodash": "^4.17.5",
     "typescript": "^2.7.1",
     "webpack": "^3.11.0"
   }
