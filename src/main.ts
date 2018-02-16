@@ -4,18 +4,13 @@ import { createCanvas } from './render';
 
 const TICK_RATE: number = 50;
 
-let latency: number = 200;
-let latencyVariance: number = 0;
-let dropRate: number = 0;
-
 const addClientButton = document.getElementById('addClientButton') as HTMLButtonElement;
 const latencyInput = document.getElementById('setLatency') as HTMLInputElement;
 const latencyVarianceInput = document.getElementById('setLatencyVariance') as HTMLInputElement;
 
-const lossyInvoke = (fn: ()=>void): void => {
-    if (Math.random() < dropRate) return;
-    setTimeout(fn, latency + latencyVariance*Math.random());
-}
+let latency: number = parseFloat(latencyInput.value);
+let latencyVariance: number = parseFloat(latencyVarianceInput.value);
+let dropRate: number = 0;
 
 latencyInput.onkeyup = event => 
     latency = parseFloat((event.target as HTMLInputElement).value);
@@ -24,6 +19,11 @@ latencyVarianceInput.onkeyup = event =>
 
 const server = new Server(createCanvas());
 setInterval(server.update.bind(server), TICK_RATE);
+
+const lossyInvoke = (fn: ()=>void): void => {
+    if (Math.random() < dropRate) return;
+    setTimeout(fn, latency + latencyVariance*Math.random());
+}
 
 addClientButton.onclick = event => {
     const client = new Client(createCanvas());

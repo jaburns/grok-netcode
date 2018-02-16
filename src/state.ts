@@ -22,33 +22,27 @@ export interface PlayerState {
     position: Vec2;
     velocity: Vec2;
     rotation: number;
+    lasers: LaserState[];
 }
 
 export interface GameState {
-    players: {[playerUID: string]: PlayerState};
-    lasers: LaserState[];
+    players: UIDMap<PlayerState>;
 }
 
 export const newGameState = (): GameState => ({ 
     players: {},
-    lasers: []
 });
 
 export const newPlayerState = (): PlayerState => ({
     lastInputUID: "",
     position: {x: 0.25 + Math.random()*0.5, y: 0.25 + Math.random()*0.5},
     velocity: {x: 0, y: 0},
-    rotation: 0
+    rotation: 360 * Math.random(),
+    lasers: []
 });
 
-interface PlayerStepResult {
-    newPlayerState: PlayerState;
-    createdLaser: LaserState | null;
-};
-
-const stepPlayerState = (input: PlayerInput, playerState: PlayerState): PlayerStepResult => {
+const stepPlayerState = (input: PlayerInput, playerState: PlayerState): PlayerState => {
     const state = cloneDeep(playerState);
-    let laser: LaserState | null = null;
 
     if (input.left) {
         state.rotation -= 10;
@@ -74,38 +68,31 @@ const stepPlayerState = (input: PlayerInput, playerState: PlayerState): PlayerSt
     if (state.position.x < 0) state.position.x += 1;
     if (state.position.y < 0) state.position.y += 1;
 
+    for (let i = state.lasers.length - 1; i >= 0; --i) {
+        if (--state.lasers[i].timeLeft <= 0) {
+            state.lasers.splice(i, 1);
+        }
+    }
+
     if (input.shoot) {
-        laser = {
+        state.lasers.push({
             source: state.position,
             angle: state.rotation,
             timeLeft: LASER_TOTAL_TIME
-        };
+        });
     }
 
     state.lastInputUID = input.uid;
 
-    return {
-        newPlayerState: state,
-        createdLaser: laser
-    };
+    return state;
 };
 
 export const stepGameState = (inputMap: UIDMap<PlayerInput>, gameState: GameState): GameState => {
     const result = cloneDeep(gameState);
 
-    for (let i = result.lasers.length - 1; i >= 0; --i) {
-        if (--result.lasers[i].timeLeft <= 0) {
-            result.lasers.splice(i, 1);
-        }
-    }
-
     for (let playerUID in result.players) {
         const steppedPlayer = stepPlayerState(inputMap[playerUID], result.players[playerUID]);
-        result.players[playerUID] = steppedPlayer.newPlayerState;
-
-        if (steppedPlayer.createdLaser !== null) {
-            result.lasers.push(steppedPlayer.createdLaser);
-        }
+        result.players[playerUID] = steppedPlayer;
     }
 
     return result;
@@ -113,6 +100,6 @@ export const stepGameState = (inputMap: UIDMap<PlayerInput>, gameState: GameStat
 
 export const predictGameState = (input: PlayerInput, playerUID: string, gameState: GameState): GameState => {
     const result = cloneDeep(gameState);
-    result.players[playerUID] = stepPlayerState(input, result.players[playerUID]).newPlayerState;
+    result.players[playerUID] = stepPlayerState(input, result.players[playerUID]);
     return result;
 };
