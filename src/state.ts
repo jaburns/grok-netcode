@@ -63,8 +63,8 @@ export const stepGameState = (inputMap: UIDMap<PlayerInput>, gameState: GameStat
     return result;
 };
 
-export const predictGameState = (input: PlayerInput, playerUID: string, worldState: GameState): GameState => {
-    const result = cloneDeep(worldState);
+export const predictGameState = (input: PlayerInput, playerUID: string, gameState: GameState): GameState => {
+    const result = cloneDeep(gameState);
     result.players[playerUID] = stepPlayerState(input, result.players[playerUID]);
     return result;
 };
