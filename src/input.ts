@@ -3,7 +3,6 @@ import { generateUID } from './utils';
 export interface PlayerInput {
     uid: string;
     up: boolean;
-    down: boolean;
     left: boolean;
     right: boolean;
     shoot: boolean;
@@ -22,25 +21,22 @@ document.onkeyup = e => delete keys[e.keyCode];
 
 const getLatestWASD = (): PlayerInput => ({
     up:    keys[87] === true,
-    down:  false,
     left:  keys[65] === true,
     right: keys[68] === true,
-    shoot: false,
+    shoot: keys[83] === true,
     uid:   generateUID()
 });
 
 const getLatestArrows = (): PlayerInput => ({
     up:    keys[38] === true,
-    down:  false,
     left:  keys[37] === true,
     right: keys[39] === true,
-    shoot: false,
+    shoot: keys[40] === true,
     uid:   generateUID()
 });
 
 const getEmptyInput = (): PlayerInput => ({
     up:    false,
-    down:  false,
     left:  false,
     right: false,
     shoot: false,
