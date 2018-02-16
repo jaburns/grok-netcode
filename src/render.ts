@@ -1,7 +1,7 @@
 import { GameState, PlayerState } from './state';
 
-const VIEW_WIDTH = 200;
-const VIEW_HEIGHT = 200;
+const VIEW_WIDTH = 300;
+const VIEW_HEIGHT = 300;
 
 const renderPlayerState = (ctx: CanvasRenderingContext2D, playerState: PlayerState): void => {
     const offx = 15*Math.cos(playerState.rotation * Math.PI / 180);
@@ -10,14 +10,14 @@ const renderPlayerState = (ctx: CanvasRenderingContext2D, playerState: PlayerSta
     ctx.lineWidth = 2;
 
     ctx.beginPath();
-    ctx.moveTo(playerState.position.x - offx, playerState.position.y - offy);
-    ctx.lineTo(playerState.position.x, playerState.position.y);
+    ctx.moveTo(VIEW_WIDTH * playerState.position.x - offx, VIEW_HEIGHT * playerState.position.y - offy);
+    ctx.lineTo(VIEW_WIDTH * playerState.position.x, VIEW_HEIGHT * playerState.position.y);
     ctx.strokeStyle = '#f99';
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(playerState.position.x, playerState.position.y);
-    ctx.lineTo(playerState.position.x + offx, playerState.position.y + offy);
+    ctx.moveTo(VIEW_WIDTH * playerState.position.x, VIEW_HEIGHT * playerState.position.y);
+    ctx.lineTo(VIEW_WIDTH * playerState.position.x + offx, VIEW_HEIGHT * playerState.position.y + offy);
     ctx.strokeStyle = '#99f';
     ctx.stroke();
 };

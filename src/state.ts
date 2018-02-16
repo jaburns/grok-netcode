@@ -24,7 +24,7 @@ export const newGameState = (): GameState => ({
 
 export const newPlayerState = (): PlayerState => ({
     lastInputUID: "",
-    position: {x: 50 + Math.random()*100, y: 50 + Math.random()*100},
+    position: {x: 0.25 + Math.random()*0.5, y: 0.25 + Math.random()*0.5},
     velocity: {x: 0, y: 0},
     rotation: 0
 });
@@ -44,8 +44,8 @@ const stepPlayerState = (input: PlayerInput, playerState: PlayerState): PlayerSt
         const cos = Math.cos(result.rotation * Math.PI / 180);
         const sin = Math.sin(result.rotation * Math.PI / 180);
 
-        result.position.x += 10*cos;
-        result.position.y += 10*sin;
+        result.position.x += 0.02*cos;
+        result.position.y += 0.02*sin;
     }
 
     result.lastInputUID = input.uid;
