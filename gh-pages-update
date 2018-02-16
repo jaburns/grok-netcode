@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+npm run build || exit 1
+
+cp public/bundle.js .
+cp public/index.html .
