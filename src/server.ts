@@ -9,17 +9,19 @@ export class Server {
     private readonly canvasContext: CanvasRenderingContext2D;
     private readonly inputMap: UIDMap<PlayerInput> = {};
     private readonly clientCallbacks: ClientReceiveState[] = [];
-    private gameState: GameState;
+    private readonly stateHistory: GameState[] = [];
+
+    private get curState(): GameState { return this.stateHistory[this.stateHistory.length-1]; }
 
     constructor(context: CanvasRenderingContext2D) {
         this.canvasContext = context;
-        this.gameState = newGameState();
+        this.stateHistory.push(newGameState());
     }
 
     addClient(playerUID: string, cb: ClientReceiveState): void {
-        this.gameState.players[playerUID] = newPlayerState();
+        this.curState.players[playerUID] = newPlayerState();
         this.clientCallbacks.push(cb);
-        this.inputMap[playerUID] = getLatestInputs(PlayerInputScheme.Nothing);
+        this.inputMap[playerUID] = getLatestInputs(PlayerInputScheme.Nothing, this.curState.frameCount);
     }
 
     receiveInput(playerUID: string, input: PlayerInput): void {
@@ -27,8 +29,14 @@ export class Server {
     }
 
     update(): void {
-        this.gameState = stepGameState(this.inputMap, this.gameState);
-        this.clientCallbacks.forEach(f => f(this.gameState));
-        renderGameState(this.canvasContext, this.gameState, 'Server');
+        const newState = stepGameState(this.inputMap, this.stateHistory);
+        this.stateHistory.push(newState);
+
+        if (this.stateHistory.length > 100) {
+            this.stateHistory.splice(0, 1);
+        }
+
+        this.clientCallbacks.forEach(f => f(newState));
+        renderGameState(this.canvasContext, newState, 'Server');
     }
 }

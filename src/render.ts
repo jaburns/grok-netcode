@@ -30,7 +30,9 @@ const renderPlayerState = (ctx: CanvasRenderingContext2D, playerState: PlayerSta
     const leftY  = PLAYER_RENDER_RADIUS*Math.sin(playerState.rotation + (210 * Math.PI / 180));
 
     ctx.lineWidth = 2;
-    ctx.strokeStyle = playerState.hitStatus === HitStatus.Predicted ? '#fff' : '#f99';
+    ctx.strokeStyle = 
+        playerState.hitStatus === HitStatus.Predicted ? '#fff' :
+        playerState.hitStatus === HitStatus.Confirmed ? '#999' : '#f99';
 
     ctx.beginPath();
     ctx.moveTo(VIEW_WIDTH * playerState.position.x + frontX, VIEW_HEIGHT * playerState.position.y + frontY);

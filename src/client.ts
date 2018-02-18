@@ -49,7 +49,7 @@ export class Client {
     update(): void {
         if (this.gameState === null) return;
 
-        const latestInput = getLatestInputs(this.inputScheme);
+        const latestInput = getLatestInputs(this.inputScheme, this.gameState.frameCount);
         this.gameState = predictGameState(latestInput, this._playerUID, this.gameState);
         this.inputStack.push(latestInput);
 

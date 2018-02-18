@@ -31,10 +31,14 @@ export interface PlayerState {
 }
 
 export interface GameState {
+    frameCount: number;
+    predictedFrameCount: number;
     players: UIDMap<PlayerState>;
 }
 
 export const newGameState = (): GameState => ({ 
+    frameCount: 0,
+    predictedFrameCount: 0,
     players: {},
 });
 
@@ -96,11 +100,11 @@ const stepPlayerState = (input: PlayerInput, playerState: PlayerState): PlayerSt
     return state;
 };
 
-const laserCollides = (laser: LaserState, player: PlayerState): boolean =>
+const laserCollides = (laser: LaserState, playerPos: Vec2): boolean =>
     circleLineIntersect(
         laser.source, 
         v2add(laser.source, v2fromRadial(1000, laser.angle)),
-        player.position,
+        playerPos,
         PLAYER_RADIUS
     );
 
@@ -109,19 +113,49 @@ const predictLaserCollisions = (gameState: GameState, playerUID: string): void =
         if (playerUID === b) continue;
 
         gameState.players[playerUID].lasers.forEach(laser => {
-            if (laserCollides(laser, gameState.players[b])) {
+            if (laser.timeLeft === LASER_TOTAL_TIME && laserCollides(laser, gameState.players[b].position)) {
                 gameState.players[b].hitStatus = HitStatus.Predicted;
             }
         });
     }
 };
 
-export const stepGameState = (inputMap: UIDMap<PlayerInput>, gameState: GameState): GameState => {
+const rewindAndCollideLaser = (laser: LaserState, shooterUID: string, targetUID: string, shooterInputFrame: number, historicalStates: GameState[]): boolean => {
+    for (let i = historicalStates.length - 1; i >= 0; --i) {
+        if (historicalStates[i].frameCount === shooterInputFrame) {
+            return laserCollides(laser, historicalStates[i].players[targetUID].position);
+        }
+    }
+
+    return false;
+};
+
+export const stepGameState = (inputMap: UIDMap<PlayerInput>, historicalStates: GameState[]): GameState => {
+    const gameState = historicalStates[historicalStates.length - 1];
     const result = cloneDeep(gameState);
 
+    // Update frame counter
+    result.frameCount++;
+    result.predictedFrameCount = result.frameCount;
+
+    // Step individual player states using latest inputs received
     for (let playerUID in result.players) {
         const steppedPlayer = stepPlayerState(inputMap[playerUID], result.players[playerUID]);
         result.players[playerUID] = steppedPlayer;
+    }
+
+    // Resolve laser collisions
+    for (let a in result.players) {
+        for (let b in result.players) {
+            if (a === b) continue;
+
+            result.players[a].lasers.forEach(laser => {
+                const shooterInputFrame = inputMap[a].frame;
+                if (laser.timeLeft === LASER_TOTAL_TIME && rewindAndCollideLaser(laser, a, b, shooterInputFrame, historicalStates)) {
+                    result.players[b].hitStatus = HitStatus.Confirmed;
+                }
+            });
+        }
     }
 
     return result;
@@ -129,7 +163,12 @@ export const stepGameState = (inputMap: UIDMap<PlayerInput>, gameState: GameStat
 
 export const predictGameState = (input: PlayerInput, playerUID: string, gameState: GameState): GameState => {
     const result = cloneDeep(gameState);
+
+    result.predictedFrameCount++;
+
     result.players[playerUID] = stepPlayerState(input, result.players[playerUID]);
+
     predictLaserCollisions(result, playerUID);
+
     return result;
 };
