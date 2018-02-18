@@ -1,11 +1,13 @@
-import { GameState, PlayerState, LaserState, LASER_TOTAL_TIME } from './state';
+import { GameState, PlayerState, LaserState, LASER_TOTAL_TIME, PLAYER_RADIUS, HitStatus } from './state';
 
 const VIEW_WIDTH = 300;
 const VIEW_HEIGHT = 300;
 
+const PLAYER_RENDER_RADIUS = VIEW_WIDTH * PLAYER_RADIUS;
+
 const renderLaser = (ctx: CanvasRenderingContext2D, laser: LaserState): void => {
-    const offx = 1000*Math.cos(laser.angle * Math.PI / 180);
-    const offy = 1000*Math.sin(laser.angle * Math.PI / 180);
+    const offx = 1000*Math.cos(laser.angle);
+    const offy = 1000*Math.sin(laser.angle);
 
     ctx.lineWidth = 2;
 
@@ -13,28 +15,32 @@ const renderLaser = (ctx: CanvasRenderingContext2D, laser: LaserState): void => 
     ctx.moveTo(VIEW_WIDTH * laser.source.x, VIEW_HEIGHT * laser.source.y);
     ctx.lineTo(VIEW_WIDTH * laser.source.x + offx, VIEW_HEIGHT * laser.source.y + offy);
 
-    const strength = Math.round(15 * laser.timeLeft / LASER_TOTAL_TIME).toString(16);
+    const strength = Math.round(0xF * laser.timeLeft / LASER_TOTAL_TIME).toString(16);
     ctx.strokeStyle = '#0'+strength+'0';
 
     ctx.stroke();
 };
 
 const renderPlayerState = (ctx: CanvasRenderingContext2D, playerState: PlayerState): void => {
-    const frontX = 15*Math.cos(playerState.rotation * Math.PI / 180);
-    const frontY = 15*Math.sin(playerState.rotation * Math.PI / 180);
-    const rightX = 15*Math.cos((playerState.rotation + 150) * Math.PI / 180);
-    const rightY = 15*Math.sin((playerState.rotation + 150) * Math.PI / 180);
-    const leftX = 15*Math.cos((playerState.rotation + 210) * Math.PI / 180);
-    const leftY = 15*Math.sin((playerState.rotation + 210) * Math.PI / 180);
+    const frontX = PLAYER_RENDER_RADIUS*Math.cos(playerState.rotation);
+    const frontY = PLAYER_RENDER_RADIUS*Math.sin(playerState.rotation);
+    const rightX = PLAYER_RENDER_RADIUS*Math.cos(playerState.rotation + (150 * Math.PI / 180));
+    const rightY = PLAYER_RENDER_RADIUS*Math.sin(playerState.rotation + (150 * Math.PI / 180));
+    const leftX  = PLAYER_RENDER_RADIUS*Math.cos(playerState.rotation + (210 * Math.PI / 180));
+    const leftY  = PLAYER_RENDER_RADIUS*Math.sin(playerState.rotation + (210 * Math.PI / 180));
 
     ctx.lineWidth = 2;
+    ctx.strokeStyle = playerState.hitStatus === HitStatus.Predicted ? '#fff' : '#f99';
 
     ctx.beginPath();
     ctx.moveTo(VIEW_WIDTH * playerState.position.x + frontX, VIEW_HEIGHT * playerState.position.y + frontY);
     ctx.lineTo(VIEW_WIDTH * playerState.position.x + rightX, VIEW_HEIGHT * playerState.position.y + rightY);
+    ctx.moveTo(VIEW_WIDTH * playerState.position.x + frontX, VIEW_HEIGHT * playerState.position.y + frontY);
     ctx.lineTo(VIEW_WIDTH * playerState.position.x + leftX,  VIEW_HEIGHT * playerState.position.y + leftY);
-    ctx.lineTo(VIEW_WIDTH * playerState.position.x + frontX, VIEW_HEIGHT * playerState.position.y + frontY);
-    ctx.strokeStyle = '#f99';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(VIEW_WIDTH * playerState.position.x, VIEW_WIDTH * playerState.position.y, PLAYER_RENDER_RADIUS, 0, 2*Math.PI);
     ctx.stroke();
 
     for (let laser of playerState.lasers) {
