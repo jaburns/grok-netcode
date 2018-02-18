@@ -1,6 +1,7 @@
 import { Server } from './server';
 import { Client } from './client';
 import { createCanvas } from './render';
+import cloneDeep = require('lodash/cloneDeep');
 
 const TICK_RATE: number = 50;
 
@@ -29,10 +30,10 @@ addClientButton.onclick = event => {
     const client = new Client(createCanvas());
 
     server.addClient(client.playerUID, gameState =>
-        lossyInvoke(() => client.receiveState(gameState)));
+        lossyInvoke(() => client.receiveState(cloneDeep(gameState))));
 
     client.bindServer((playerUID, input) =>
-        lossyInvoke(() => server.receiveInput(playerUID, input)));
+        lossyInvoke(() => server.receiveInput(playerUID, cloneDeep(input))));
 
     setInterval(client.update.bind(client), TICK_RATE);
 };

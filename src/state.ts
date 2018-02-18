@@ -5,8 +5,9 @@ import cloneDeep = require('lodash/cloneDeep');
 export const LASER_TOTAL_TIME: number = 10;
 export const PLAYER_RADIUS: number = 0.05;
 
+const HIT_COOLDOWN: number = 20;
 const LASER_COOLDOWN: number = 20;
-const PLAYER_ACCEL: number = 0.001;
+const PLAYER_SPEED: number = 0.02;
 
 export enum HitStatus {
     Nothing,
@@ -23,11 +24,11 @@ export interface LaserState {
 export interface PlayerState {
     lastInputUID: string;
     position: Vec2;
-    velocity: Vec2;
     rotation: number;
     laserCooldown: number;
     lasers: LaserState[];
     hitStatus: HitStatus;
+    hitCooldown: number;
 }
 
 export interface GameState {
@@ -45,15 +46,21 @@ export const newGameState = (): GameState => ({
 export const newPlayerState = (): PlayerState => ({
     lastInputUID: "",
     position: {x: 0.25 + Math.random()*0.5, y: 0.25 + Math.random()*0.5},
-    velocity: {x: 0, y: 0},
     rotation: 2 * Math.PI * Math.random(),
     laserCooldown: 0,
     lasers: [],
-    hitStatus: HitStatus.Nothing
+    hitStatus: HitStatus.Nothing,
+    hitCooldown: 0,
 });
 
 const stepPlayerState = (input: PlayerInput, playerState: PlayerState): PlayerState => {
     const state = cloneDeep(playerState);
+
+    if (state.hitCooldown > 0) {
+        if (--state.hitCooldown <= 0) {
+            state.hitStatus = HitStatus.Nothing;
+        }
+    }
 
     if (input.left) {
         state.rotation -= 0.2;
@@ -66,15 +73,13 @@ const stepPlayerState = (input: PlayerInput, playerState: PlayerState): PlayerSt
     const dir = v2fromRadial(1, state.rotation);
 
     if (input.up) {
-        state.velocity = v2add(state.velocity, v2scale(dir, PLAYER_ACCEL));
+        state.position = v2add(state.position, v2scale(dir, PLAYER_SPEED));
     }
 
-    state.position = v2add(state.position, state.velocity);
-
-    if (state.position.x > 1 - PLAYER_RADIUS) state.velocity.x = -Math.abs(state.velocity.x);
-    if (state.position.y > 1 - PLAYER_RADIUS) state.velocity.y = -Math.abs(state.velocity.y);
-    if (state.position.x <     PLAYER_RADIUS) state.velocity.x =  Math.abs(state.velocity.x);
-    if (state.position.y <     PLAYER_RADIUS) state.velocity.y =  Math.abs(state.velocity.y);
+    if (state.position.x > 1 - PLAYER_RADIUS) state.position.x = 1 - PLAYER_RADIUS;
+    if (state.position.y > 1 - PLAYER_RADIUS) state.position.y = 1 - PLAYER_RADIUS;
+    if (state.position.x <     PLAYER_RADIUS) state.position.x =     PLAYER_RADIUS;
+    if (state.position.y <     PLAYER_RADIUS) state.position.y =     PLAYER_RADIUS; 
 
     if (state.laserCooldown > 0) {
         state.laserCooldown--;
@@ -107,18 +112,6 @@ const laserCollides = (laser: LaserState, playerPos: Vec2): boolean =>
         playerPos,
         PLAYER_RADIUS
     );
-
-const predictLaserCollisions = (gameState: GameState, playerUID: string): void => {
-    for (let b in gameState.players) {
-        if (playerUID === b) continue;
-
-        gameState.players[playerUID].lasers.forEach(laser => {
-            if (laser.timeLeft === LASER_TOTAL_TIME && laserCollides(laser, gameState.players[b].position)) {
-                gameState.players[b].hitStatus = HitStatus.Predicted;
-            }
-        });
-    }
-};
 
 const rewindAndCollideLaser = (laser: LaserState, shooterUID: string, targetUID: string, shooterInputFrame: number, historicalStates: GameState[]): boolean => {
     for (let i = historicalStates.length - 1; i >= 0; --i) {
@@ -153,6 +146,7 @@ export const stepGameState = (inputMap: UIDMap<PlayerInput>, historicalStates: G
                 const shooterInputFrame = inputMap[a].frame;
                 if (laser.timeLeft === LASER_TOTAL_TIME && rewindAndCollideLaser(laser, a, b, shooterInputFrame, historicalStates)) {
                     result.players[b].hitStatus = HitStatus.Confirmed;
+                    result.players[b].hitCooldown = HIT_COOLDOWN;
                 }
             });
         }
@@ -161,14 +155,25 @@ export const stepGameState = (inputMap: UIDMap<PlayerInput>, historicalStates: G
     return result;
 };
 
-export const predictGameState = (input: PlayerInput, playerUID: string, gameState: GameState): GameState => {
+export const predictGameState = (input: PlayerInput, playerUID: string, gameState: GameState, newFrame: boolean): GameState => {
     const result = cloneDeep(gameState);
 
     result.predictedFrameCount++;
 
     result.players[playerUID] = stepPlayerState(input, result.players[playerUID]);
 
-    predictLaserCollisions(result, playerUID);
+    // Predict laser collisions in local reference frame
+    if (newFrame) {
+        for (let b in result.players) {
+            if (playerUID === b) continue;
+
+            result.players[playerUID].lasers.forEach(laser => {
+                if (laser.timeLeft === LASER_TOTAL_TIME && laserCollides(laser, result.players[b].position)) {
+                    result.players[b].hitStatus = HitStatus.Predicted;
+                }
+            });
+        }
+    }
 
     return result;
 };

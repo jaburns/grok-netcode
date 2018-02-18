@@ -41,7 +41,7 @@ export class Client {
         if (matchIndex >= 0) {
             this.gameState = serverState;
             for (let i = matchIndex + 1; i < this.inputStack.length; ++i) {
-                this.gameState = predictGameState(this.inputStack[i], this._playerUID, this.gameState);
+                this.gameState = predictGameState(this.inputStack[i], this._playerUID, this.gameState, false);
             }
         }
     }
@@ -50,7 +50,7 @@ export class Client {
         if (this.gameState === null) return;
 
         const latestInput = getLatestInputs(this.inputScheme, this.gameState.frameCount);
-        this.gameState = predictGameState(latestInput, this._playerUID, this.gameState);
+        this.gameState = predictGameState(latestInput, this._playerUID, this.gameState, true);
         this.inputStack.push(latestInput);
 
         if (this.inputStack.length > 100) {
