@@ -1,9 +1,19 @@
 import { GameState, PlayerState, LaserState, LASER_TOTAL_TIME, PLAYER_RADIUS, HitStatus } from './state';
 
+export type GameStateRenderer = (state: GameState) => void;
+
+interface RenderHistoryItem {
+    index: number;
+    ctx: CanvasRenderingContext2D;
+    state: GameState;
+}
+
 const VIEW_WIDTH = 300;
 const VIEW_HEIGHT = 300;
-
 const PLAYER_RENDER_RADIUS = VIEW_WIDTH * PLAYER_RADIUS;
+
+const renderHistory: RenderHistoryItem[] = [];
+let renderHistoryIndex: number = -1;
 
 const renderLaser = (ctx: CanvasRenderingContext2D, laser: LaserState): void => {
     const offx = 1000*Math.cos(laser.angle);
@@ -50,7 +60,7 @@ const renderPlayerState = (ctx: CanvasRenderingContext2D, playerState: PlayerSta
     }
 };
 
-export const createCanvas = (): CanvasRenderingContext2D => {
+const createCanvas = (): CanvasRenderingContext2D => {
     const canvas = document.createElement('canvas') as HTMLCanvasElement;
     canvas.width = VIEW_WIDTH;
     canvas.height = VIEW_HEIGHT;
@@ -58,7 +68,7 @@ export const createCanvas = (): CanvasRenderingContext2D => {
     return canvas.getContext('2d') as CanvasRenderingContext2D;
 };
 
-export const renderGameState = (ctx: CanvasRenderingContext2D, gameState: GameState , title: string): void => {
+const renderGameState = (ctx: CanvasRenderingContext2D, gameState: GameState): void => {
     ctx.clearRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
 
     for (let playerUID in gameState.players) {
@@ -67,5 +77,34 @@ export const renderGameState = (ctx: CanvasRenderingContext2D, gameState: GameSt
 
     ctx.font = '12px monospace';
     ctx.fillStyle = '#fff';
-    ctx.fillText(title, 2, 12);
+    ctx.fillText(gameState.frameCount + " : " + gameState.predictedFrameCount, 2, 12);
+};
+
+let rendererCounter = 0;
+
+export const createRenderer = (): GameStateRenderer => {
+    const ctx = createCanvas();
+    const index = rendererCounter++;
+    return state => {
+        renderHistory.push({ index, ctx, state });
+        renderHistoryIndex = renderHistory.length - 1;
+        if (renderHistory.length > 1000) renderHistory.splice(0, 1);
+        renderGameState(ctx, state);
+    };
+};
+
+export const renderHistoryBack = (): void => {
+    renderHistoryIndex--;
+    if (renderHistoryIndex < 0) renderHistoryIndex = 0;
+    const moment = renderHistory[renderHistoryIndex];
+    renderGameState(moment.ctx, moment.state);
+    console.log(moment.index, moment.state);
+};
+
+export const renderHistoryForward = (): void => {
+    renderHistoryIndex++;
+    if (renderHistoryIndex >= renderHistory.length) renderHistoryIndex = renderHistory.length - 1;
+    const moment = renderHistory[renderHistoryIndex];
+    renderGameState(moment.ctx, moment.state);
+    console.log(moment.index, moment.state);
 };

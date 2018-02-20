@@ -1,20 +1,20 @@
 import { newPlayerState, stepGameState, GameState, newGameState } from './state';
-import { renderGameState } from './render';
+import { GameStateRenderer } from './render';
 import { getLatestInputs, PlayerInputScheme, PlayerInput } from './input';
 import { UIDMap } from './utils';
 
 export type ClientReceiveState = (gameState: GameState) => void; 
 
 export class Server {
-    private readonly canvasContext: CanvasRenderingContext2D;
+    private readonly renderer: GameStateRenderer;
     private readonly inputMap: UIDMap<PlayerInput> = {};
     private readonly clientCallbacks: ClientReceiveState[] = [];
     private readonly stateHistory: GameState[] = [];
 
     private get curState(): GameState { return this.stateHistory[this.stateHistory.length-1]; }
 
-    constructor(context: CanvasRenderingContext2D) {
-        this.canvasContext = context;
+    constructor(renderer: GameStateRenderer) {
+        this.renderer = renderer;
         this.stateHistory.push(newGameState());
     }
 
@@ -37,6 +37,6 @@ export class Server {
         }
 
         this.clientCallbacks.forEach(f => f(newState));
-        renderGameState(this.canvasContext, newState, 'Server');
+        this.renderer(newState);
     }
 }
