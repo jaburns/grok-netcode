@@ -5,9 +5,17 @@ import { UIDMap } from './utils';
 
 export type ClientReceiveState = (gameState: GameState) => void; 
 
+const getCurrentInputs = (buffers: UIDMap<PlayerInput[]>): UIDMap<PlayerInput> => {
+    const result: UIDMap<PlayerInput> = {};
+    for (var k in buffers) {
+        result[k] = (buffers[k].length > 1 ? buffers[k].splice(0,1)[0] : buffers[k][0]) as PlayerInput;
+    }
+    return result;
+};
+
 export class Server {
     private readonly renderer: GameStateRenderer;
-    private readonly inputMap: UIDMap<PlayerInput> = {};
+    private readonly inputBuffers: UIDMap<PlayerInput[]> = {};
     private readonly clientCallbacks: ClientReceiveState[] = [];
     private readonly stateHistory: GameState[] = [];
 
@@ -21,15 +29,15 @@ export class Server {
     addClient(playerUID: string, cb: ClientReceiveState): void {
         this.curState.players[playerUID] = newPlayerState();
         this.clientCallbacks.push(cb);
-        this.inputMap[playerUID] = getLatestInputs(PlayerInputScheme.Nothing, this.curState.frameCount);
+        this.inputBuffers[playerUID] = [getLatestInputs(PlayerInputScheme.Nothing, this.curState.frameCount)];
     }
 
     receiveInput(playerUID: string, input: PlayerInput): void {
-        this.inputMap[playerUID] = input;
+        this.inputBuffers[playerUID].push(input);
     }
 
     update(): void {
-        const newState = stepGameState(this.inputMap, this.stateHistory);
+        const newState = stepGameState(getCurrentInputs(this.inputBuffers), this.stateHistory);
         this.stateHistory.push(newState);
 
         if (this.stateHistory.length > 100) {
