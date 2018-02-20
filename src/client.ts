@@ -1,5 +1,5 @@
 import { predictGameState, GameState } from './state';
-import { renderGameState } from './render';
+import { GameStateRenderer } from './render';
 import { getLatestInputs, PlayerInputScheme, PlayerInput } from './input';
 import { generateUID } from './utils';
 
@@ -8,7 +8,7 @@ export type ServerReceiveInput = (playerUID: string, input: PlayerInput) => void
 let clientCounter: number = 0;
 
 export class Client {
-    private readonly canvasContext: CanvasRenderingContext2D;
+    private readonly renderer: GameStateRenderer;
     private readonly inputScheme: PlayerInputScheme;
     private readonly inputStack: PlayerInput[] = [];
     private readonly _playerUID: string;
@@ -17,8 +17,8 @@ export class Client {
 
     get playerUID(): string { return this._playerUID; }
 
-    constructor(context: CanvasRenderingContext2D) {
-        this.canvasContext = context;
+    constructor(renderer: GameStateRenderer) {
+        this.renderer = renderer;
         this.inputScheme = clientCounter++ % 2 == 0 ? PlayerInputScheme.Arrows : PlayerInputScheme.WASD;
         this._playerUID = generateUID();
     }
@@ -27,7 +27,7 @@ export class Client {
         this.serverCallback = cb;
     }
 
-    receiveState(serverState: GameState) {
+    receiveState(serverState: GameState): void {
         if (this.gameState == null) {
             this.gameState = serverState;
             return;
@@ -41,7 +41,7 @@ export class Client {
         if (matchIndex >= 0) {
             this.gameState = serverState;
             for (let i = matchIndex + 1; i < this.inputStack.length; ++i) {
-                this.gameState = predictGameState(this.inputStack[i], this._playerUID, this.gameState);
+                this.gameState = predictGameState(this.inputStack[i], this._playerUID, this.gameState, false);
             }
         }
     }
@@ -49,8 +49,8 @@ export class Client {
     update(): void {
         if (this.gameState === null) return;
 
-        const latestInput = getLatestInputs(this.inputScheme);
-        this.gameState = predictGameState(latestInput, this._playerUID, this.gameState);
+        const latestInput = getLatestInputs(this.inputScheme, this.gameState.frameCount);
+        this.gameState = predictGameState(latestInput, this._playerUID, this.gameState, true);
         this.inputStack.push(latestInput);
 
         if (this.inputStack.length > 100) {
@@ -61,7 +61,6 @@ export class Client {
             this.serverCallback(this._playerUID, latestInput);
         }
 
-        const title = 'Client ' + (this.inputScheme === PlayerInputScheme.WASD ? '(WASD)' : '(Arrows)');
-        renderGameState(this.canvasContext, this.gameState, title);
+        this.renderer(this.gameState);
     }
 }

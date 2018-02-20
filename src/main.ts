@@ -1,6 +1,7 @@
 import { Server } from './server';
 import { Client } from './client';
-import { createCanvas } from './render';
+import { createRenderer, renderHistoryBack, renderHistoryForward } from './render';
+import cloneDeep = require('lodash/cloneDeep');
 
 const TICK_RATE: number = 50;
 
@@ -17,8 +18,10 @@ latencyInput.onkeyup = event =>
 latencyVarianceInput.onkeyup = event => 
     latencyVariance = parseFloat((event.target as HTMLInputElement).value);
 
-const server = new Server(createCanvas());
-setInterval(server.update.bind(server), TICK_RATE);
+const intervals: number[] = [];
+
+const server = new Server(createRenderer());
+intervals.push(setInterval(server.update.bind(server), TICK_RATE));
 
 const lossyInvoke = (fn: ()=>void): void => {
     if (Math.random() < dropRate) return;
@@ -26,13 +29,26 @@ const lossyInvoke = (fn: ()=>void): void => {
 }
 
 addClientButton.onclick = event => {
-    const client = new Client(createCanvas());
+    const client = new Client(createRenderer());
 
     server.addClient(client.playerUID, gameState =>
-        lossyInvoke(() => client.receiveState(gameState)));
+        lossyInvoke(() => client.receiveState(cloneDeep(gameState))));
 
     client.bindServer((playerUID, input) =>
-        lossyInvoke(() => server.receiveInput(playerUID, input)));
+        lossyInvoke(() => server.receiveInput(playerUID, cloneDeep(input))));
 
-    setInterval(client.update.bind(client), TICK_RATE);
+    intervals.push(setInterval(client.update.bind(client), TICK_RATE));
+};
+
+(document.getElementById('inspectButton') as HTMLButtonElement).onclick = event => {
+    intervals.forEach(x => clearInterval(x));
+    addClientButton.onclick = _ => {};
+
+    (document.getElementById('inspectBackButton') as HTMLButtonElement).onclick = event => {
+        renderHistoryBack();
+    };
+
+    (document.getElementById('inspectForwardButton') as HTMLButtonElement).onclick = event => {
+        renderHistoryForward();
+    };
 };

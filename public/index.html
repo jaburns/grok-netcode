@@ -3,6 +3,9 @@
     <head>
         <title>Grok Netcode</title>
         <style>
+            html, body {
+                background-color: #222;
+            }
             canvas {
                 background-color: #000;
                 margin: 10px;
@@ -13,9 +16,14 @@
         </style>
     </head>
     <body>
-        <p><label>Latency:</label><input id="setLatency" type="text" value="100" /></p>
-        <p><label>Latency variance:</label><input id="setLatencyVariance" type="text" value="0" /></p>
+        <p><label>Latency:</label><input id="setLatency" type="text" value="80" /></p>
+        <p><label>Latency variance:</label><input id="setLatencyVariance" type="text" value="40" /></p>
         <p><button id="addClientButton">Add Client</button></p>
+        <p>
+            <button id="inspectButton">Inspect</button>
+            <button id="inspectBackButton">&lt;--</button>
+            <button id="inspectForwardButton">--&gt;</button>
+        </p>
         <div id="views"></div>
     </body>
     <script type="text/javascript" src="bundle.js"></script>
