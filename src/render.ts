@@ -54,10 +54,6 @@ const renderPlayerState = (ctx: CanvasRenderingContext2D, playerState: PlayerSta
     ctx.beginPath();
     ctx.arc(VIEW_WIDTH * playerState.position.x, VIEW_WIDTH * playerState.position.y, PLAYER_RENDER_RADIUS, 0, 2*Math.PI);
     ctx.stroke();
-
-    for (let laser of playerState.lasers) {
-        renderLaser(ctx, laser);
-    }
 };
 
 const createCanvas = (): CanvasRenderingContext2D => {
@@ -73,6 +69,10 @@ const renderGameState = (ctx: CanvasRenderingContext2D, gameState: GameState): v
 
     for (let playerUID in gameState.players) {
         renderPlayerState(ctx, gameState.players[playerUID]);
+    }
+
+    for (let laser of gameState.lasers) {
+        renderLaser(ctx, laser);
     }
 
     ctx.font = '12px monospace';
