@@ -5,6 +5,8 @@
         <style>
             html, body {
                 background-color: #222;
+                font-family: sans-serif;
+                color: #ccc;
             }
             canvas {
                 background-color: #000;
@@ -13,17 +15,21 @@
             button {
                 font-size: 16px;
             }
+            #inspectRange {
+                width: 320px;
+            }
+            .formRow label {
+                display: inline-block;
+                text-align: right;
+                width: 200px;
+            }
         </style>
     </head>
     <body>
-        <p><label>Latency:</label><input id="setLatency" type="text" value="80" /></p>
-        <p><label>Latency variance:</label><input id="setLatencyVariance" type="text" value="40" /></p>
-        <p><button id="addClientButton">Add Client</button></p>
-        <p>
-            <button id="inspectButton">Inspect</button>
-            <button id="inspectBackButton">&lt;--</button>
-            <button id="inspectForwardButton">--&gt;</button>
-        </p>
+        <div class="formRow"><label for="setLatency">Latency:</label><input id="setLatency" type="text" value="80" /></div>
+        <div class="formRow"><label for="setLatencyVariance">Latency variance:</label><input id="setLatencyVariance" type="text" value="40" /></div>
+        <div class="formRow"><label for="inspectRange">Inspect history:</label><input id="inspectRange" type="range" min="-300" max="0" step="1" value="10" /></div>
+        <div class="formRow"><button id="addClientButton">Add Client</button></div>
         <div id="views"></div>
     </body>
     <script type="text/javascript" src="bundle.js"></script>
