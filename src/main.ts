@@ -1,6 +1,6 @@
 import { Server } from './server';
 import { Client } from './client';
-import { createRenderer, renderHistoryBack, renderHistoryForward } from './render';
+import { createRenderer, setRenderHistoryFrame } from './render';
 import cloneDeep = require('lodash/cloneDeep');
 
 const TICK_RATE: number = 50;
@@ -40,15 +40,15 @@ addClientButton.onclick = event => {
     intervals.push(setInterval(client.update.bind(client), TICK_RATE));
 };
 
-(document.getElementById('inspectButton') as HTMLButtonElement).onclick = event => {
-    intervals.forEach(x => clearInterval(x));
-    addClientButton.onclick = _ => {};
+let startedInspecting = false;
 
-    (document.getElementById('inspectBackButton') as HTMLButtonElement).onclick = event => {
-        renderHistoryBack();
-    };
+(document.getElementById('inspectRange') as HTMLInputElement).oninput = event => {
+    if (!startedInspecting) {
+        intervals.forEach(x => clearInterval(x));
+        addClientButton.onclick = _ => {};
+        (addClientButton.parentElement as HTMLElement).removeChild(addClientButton);
+        startedInspecting = true;
+    }
 
-    (document.getElementById('inspectForwardButton') as HTMLButtonElement).onclick = event => {
-        renderHistoryForward();
-    };
+    setRenderHistoryFrame(parseInt((event.target as HTMLInputElement).value));
 };
