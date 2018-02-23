@@ -8,6 +8,7 @@ export const PLAYER_RADIUS: number = 0.05;
 const HIT_COOLDOWN: number = 20;
 const LASER_COOLDOWN: number = 20;
 const PLAYER_SPEED: number = 0.02;
+const BULLET_SPEED: number = 0.03;
 
 export enum HitStatus {
     Nothing,
@@ -20,6 +21,12 @@ export interface LaserState {
     source: Vec2;
     angle: number;
     timeLeft: number;
+}
+
+export interface BulletState {
+    ownerUID: string;
+    position: Vec2;
+    angle: number;
 }
 
 export interface PlayerState {
@@ -36,6 +43,7 @@ export interface GameState {
     predictedFrameCount: number;
     players: UIDMap<PlayerState>;
     lasers: LaserState[];
+    bullets: BulletState[];
 }
 
 export const newGameState = (): GameState => ({ 
@@ -43,6 +51,7 @@ export const newGameState = (): GameState => ({
     predictedFrameCount: 0,
     players: {},
     lasers: [],
+    bullets: []
 });
 
 export const newPlayerState = (): PlayerState => ({
@@ -57,11 +66,16 @@ export const newPlayerState = (): PlayerState => ({
 interface PlayerUpdateResult {
     newState: PlayerState;
     newLaser: LaserState | null;
+    newBullet: BulletState | null;
 }
 
 const stepPlayerState = (input: PlayerInput, playerUID: string, playerState: PlayerState): PlayerUpdateResult => {
     const state = cloneDeep(playerState);
-    const result: PlayerUpdateResult = { newState: state, newLaser: null };
+    const result: PlayerUpdateResult = { 
+        newState: state, 
+        newLaser: null, 
+        newBullet: null 
+    };
 
     if (state.hitCooldown > 0) {
         if (--state.hitCooldown <= 0) {
@@ -92,7 +106,15 @@ const stepPlayerState = (input: PlayerInput, playerUID: string, playerState: Pla
         state.laserCooldown--;
     }
 
-    if (input.shoot && state.laserCooldown < 1) {
+    if (input.bullet) {
+        result.newBullet = {
+            ownerUID: playerUID,
+            position: v2add(state.position, v2scale(dir, PLAYER_RADIUS)),
+            angle: state.rotation
+        };
+    }
+
+    if (input.laser && state.laserCooldown < 1) {
         result.newLaser = {
             ownerUID: playerUID,
             source: v2add(state.position, v2scale(dir, PLAYER_RADIUS)),
@@ -133,11 +155,20 @@ const updateLasers = (gameState: GameState): void => {
     }
 };
 
+const updateBullets = (gameState: GameState): void => {
+    for (let bullet of gameState.bullets) {
+        bullet.position = v2add(bullet.position, v2fromRadial(BULLET_SPEED, bullet.angle));
+    }
+};
+
 const updatePlayer = (gameState: GameState, input: PlayerInput, playerUID: string): void => {
     const steppedPlayer = stepPlayerState(input, playerUID, gameState.players[playerUID]);
     gameState.players[playerUID] = steppedPlayer.newState;
     if (steppedPlayer.newLaser !== null) {
         gameState.lasers.push(steppedPlayer.newLaser);
+    }
+    if (steppedPlayer.newBullet !== null) {
+        gameState.bullets.push(steppedPlayer.newBullet);
     }
 };
 
@@ -149,6 +180,7 @@ export const stepGameState = (inputMap: UIDMap<PlayerInput>, historicalStates: G
     result.predictedFrameCount = result.frameCount;
 
     updateLasers(result);
+    updateBullets(result);
     for (let playerUID in result.players) {
         updatePlayer(result, inputMap[playerUID], playerUID);
     }

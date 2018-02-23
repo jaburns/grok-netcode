@@ -1,4 +1,4 @@
-import { GameState, PlayerState, LaserState, LASER_TOTAL_TIME, PLAYER_RADIUS, HitStatus } from './state';
+import { GameState, PlayerState, LaserState, LASER_TOTAL_TIME, PLAYER_RADIUS, HitStatus, BulletState } from './state';
 
 export type GameStateRenderer = (state: GameState) => void;
 
@@ -28,6 +28,15 @@ const renderLaser = (ctx: CanvasRenderingContext2D, laser: LaserState): void => 
     const strength = Math.round(0xF * laser.timeLeft / LASER_TOTAL_TIME).toString(16);
     ctx.strokeStyle = '#0'+strength+'0';
 
+    ctx.stroke();
+};
+
+const renderBullet = (ctx: CanvasRenderingContext2D, bullet: BulletState): void => {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#99f';
+
+    ctx.beginPath();
+    ctx.arc(VIEW_WIDTH*bullet.position.x, VIEW_HEIGHT*bullet.position.y, 2, 0, 2*Math.PI);
     ctx.stroke();
 };
 
@@ -73,6 +82,10 @@ const renderGameState = (ctx: CanvasRenderingContext2D, gameState: GameState): v
 
     for (let laser of gameState.lasers) {
         renderLaser(ctx, laser);
+    }
+
+    for (let bullet of gameState.bullets) {
+        renderBullet(ctx, bullet);
     }
 
     ctx.font = '12px monospace';
