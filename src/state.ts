@@ -27,6 +27,8 @@ export interface BulletState {
     ownerUID: string;
     position: Vec2;
     angle: number;
+    predicted: boolean;
+    age: number;
 }
 
 export interface PlayerState {
@@ -110,7 +112,9 @@ const stepPlayerState = (input: PlayerInput, playerUID: string, playerState: Pla
         result.newBullet = {
             ownerUID: playerUID,
             position: v2add(state.position, v2scale(dir, PLAYER_RADIUS)),
-            angle: state.rotation
+            angle: state.rotation,
+            predicted: false,
+            age: 0
         };
     }
 
@@ -155,20 +159,25 @@ const updateLasers = (gameState: GameState): void => {
     }
 };
 
-const updateBullets = (gameState: GameState): void => {
+const updateBullets = (gameState: GameState, predictingForPlayerUID: string | null): void => {
     for (let bullet of gameState.bullets) {
-        bullet.position = v2add(bullet.position, v2fromRadial(BULLET_SPEED, bullet.angle));
+        if (predictingForPlayerUID === null || bullet.predicted || bullet.ownerUID !== predictingForPlayerUID) { 
+            bullet.position = v2add(bullet.position, v2fromRadial(BULLET_SPEED, bullet.angle));
+        }
+        bullet.age++;
     }
 };
 
-const updatePlayer = (gameState: GameState, input: PlayerInput, playerUID: string): void => {
+const updatePlayer = (gameState: GameState, input: PlayerInput, playerUID: string, predicting: boolean): void => {
     const steppedPlayer = stepPlayerState(input, playerUID, gameState.players[playerUID]);
     gameState.players[playerUID] = steppedPlayer.newState;
     if (steppedPlayer.newLaser !== null) {
         gameState.lasers.push(steppedPlayer.newLaser);
     }
     if (steppedPlayer.newBullet !== null) {
-        gameState.bullets.push(steppedPlayer.newBullet);
+        const newBullet = steppedPlayer.newBullet;
+        newBullet.predicted = predicting;
+        gameState.bullets.push(newBullet);
     }
 };
 
@@ -180,9 +189,18 @@ export const stepGameState = (inputMap: UIDMap<PlayerInput>, historicalStates: G
     result.predictedFrameCount = result.frameCount;
 
     updateLasers(result);
-    updateBullets(result);
+    updateBullets(result, null);
     for (let playerUID in result.players) {
-        updatePlayer(result, inputMap[playerUID], playerUID);
+        updatePlayer(result, inputMap[playerUID], playerUID, false);
+    }
+
+    // Fast-forward bullets from the shooters' reference frames to the server reference frame
+    for (let bullet of result.bullets) {
+        if (bullet.age === 0) {
+            for (let i = inputMap[bullet.ownerUID].frame; i < result.frameCount; ++i) {
+                bullet.position = v2add(bullet.position, v2fromRadial(BULLET_SPEED, bullet.angle));
+            }
+        }
     }
 
     // Resolve laser collisions
@@ -207,7 +225,8 @@ export const predictGameState = (input: PlayerInput, playerUID: string, gameStat
     result.predictedFrameCount++;
 
     updateLasers(result);
-    updatePlayer(result, input, playerUID);
+    updateBullets(result, playerUID);
+    updatePlayer(result, input, playerUID, true);
 
     // Predict laser collisions in local reference frame
     if (newFrame) {
