@@ -35,7 +35,7 @@ export interface PlayerState {
     lastInputUID: string;
     position: Vec2;
     rotation: number;
-    laserCooldown: number;
+    gunCooldown: number;
     hitStatus: HitStatus;
     hitCooldown: number;
 }
@@ -60,7 +60,7 @@ export const newPlayerState = (): PlayerState => ({
     lastInputUID: "",
     position: {x: 0.25 + Math.random()*0.5, y: 0.25 + Math.random()*0.5},
     rotation: 2 * Math.PI * Math.random(),
-    laserCooldown: 0,
+    gunCooldown: 0,
     hitStatus: HitStatus.Nothing,
     hitCooldown: 0,
 });
@@ -104,11 +104,11 @@ const stepPlayerState = (input: PlayerInput, playerUID: string, playerState: Pla
     if (state.position.x <     PLAYER_RADIUS) state.position.x =     PLAYER_RADIUS;
     if (state.position.y <     PLAYER_RADIUS) state.position.y =     PLAYER_RADIUS; 
 
-    if (state.laserCooldown > 0) {
-        state.laserCooldown--;
+    if (state.gunCooldown > 0) {
+        state.gunCooldown--;
     }
 
-    if (input.bullet) {
+    if (input.bullet && state.gunCooldown < 1) {
         result.newBullet = {
             ownerUID: playerUID,
             position: v2add(state.position, v2scale(dir, PLAYER_RADIUS)),
@@ -116,16 +116,17 @@ const stepPlayerState = (input: PlayerInput, playerUID: string, playerState: Pla
             predicted: false,
             age: 0
         };
+        state.gunCooldown = LASER_COOLDOWN;
     }
 
-    if (input.laser && state.laserCooldown < 1) {
+    if (input.laser && state.gunCooldown < 1) {
         result.newLaser = {
             ownerUID: playerUID,
             source: v2add(state.position, v2scale(dir, PLAYER_RADIUS)),
             angle: state.rotation,
             timeLeft: LASER_TOTAL_TIME
         };
-        state.laserCooldown = LASER_COOLDOWN;
+        state.gunCooldown = LASER_COOLDOWN;
     }
 
     state.lastInputUID = input.uid;
