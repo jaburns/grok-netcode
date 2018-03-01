@@ -36,7 +36,7 @@ const getLatestArrows = (frame: number): PlayerInput => ({
     left:   keys[37] === true, // Left
     right:  keys[39] === true, // Right
     laser:  keys[40] === true, // Down
-    bullet: keys[32] === true, // Space
+    bullet: keys[16] === true, // Shift
     uid:    generateUID(),
     frame
 });
