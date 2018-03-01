@@ -8,6 +8,7 @@ export const PLAYER_RADIUS: number = 0.05;
 const HIT_COOLDOWN: number = 20;
 const LASER_COOLDOWN: number = 20;
 const PLAYER_SPEED: number = 0.02;
+const BULLET_SPEED: number = 0.03;
 
 export enum HitStatus {
     Nothing,
@@ -22,11 +23,19 @@ export interface LaserState {
     timeLeft: number;
 }
 
+export interface BulletState {
+    ownerUID: string;
+    position: Vec2;
+    angle: number;
+    predicted: boolean;
+    age: number;
+}
+
 export interface PlayerState {
     lastInputUID: string;
     position: Vec2;
     rotation: number;
-    laserCooldown: number;
+    gunCooldown: number;
     hitStatus: HitStatus;
     hitCooldown: number;
 }
@@ -36,6 +45,7 @@ export interface GameState {
     predictedFrameCount: number;
     players: UIDMap<PlayerState>;
     lasers: LaserState[];
+    bullets: BulletState[];
 }
 
 export const newGameState = (): GameState => ({ 
@@ -43,13 +53,14 @@ export const newGameState = (): GameState => ({
     predictedFrameCount: 0,
     players: {},
     lasers: [],
+    bullets: []
 });
 
 export const newPlayerState = (): PlayerState => ({
     lastInputUID: "",
     position: {x: 0.25 + Math.random()*0.5, y: 0.25 + Math.random()*0.5},
     rotation: 2 * Math.PI * Math.random(),
-    laserCooldown: 0,
+    gunCooldown: 0,
     hitStatus: HitStatus.Nothing,
     hitCooldown: 0,
 });
@@ -57,11 +68,16 @@ export const newPlayerState = (): PlayerState => ({
 interface PlayerUpdateResult {
     newState: PlayerState;
     newLaser: LaserState | null;
+    newBullet: BulletState | null;
 }
 
 const stepPlayerState = (input: PlayerInput, playerUID: string, playerState: PlayerState): PlayerUpdateResult => {
     const state = cloneDeep(playerState);
-    const result: PlayerUpdateResult = { newState: state, newLaser: null };
+    const result: PlayerUpdateResult = { 
+        newState: state, 
+        newLaser: null, 
+        newBullet: null 
+    };
 
     if (state.hitCooldown > 0) {
         if (--state.hitCooldown <= 0) {
@@ -88,18 +104,29 @@ const stepPlayerState = (input: PlayerInput, playerUID: string, playerState: Pla
     if (state.position.x <     PLAYER_RADIUS) state.position.x =     PLAYER_RADIUS;
     if (state.position.y <     PLAYER_RADIUS) state.position.y =     PLAYER_RADIUS; 
 
-    if (state.laserCooldown > 0) {
-        state.laserCooldown--;
+    if (state.gunCooldown > 0) {
+        state.gunCooldown--;
     }
 
-    if (input.shoot && state.laserCooldown < 1) {
+    if (input.bullet && state.gunCooldown < 1) {
+        result.newBullet = {
+            ownerUID: playerUID,
+            position: v2add(state.position, v2scale(dir, PLAYER_RADIUS)),
+            angle: state.rotation,
+            predicted: false,
+            age: 0
+        };
+        state.gunCooldown = LASER_COOLDOWN;
+    }
+
+    if (input.laser && state.gunCooldown < 1) {
         result.newLaser = {
             ownerUID: playerUID,
             source: v2add(state.position, v2scale(dir, PLAYER_RADIUS)),
             angle: state.rotation,
             timeLeft: LASER_TOTAL_TIME
         };
-        state.laserCooldown = LASER_COOLDOWN;
+        state.gunCooldown = LASER_COOLDOWN;
     }
 
     state.lastInputUID = input.uid;
@@ -133,11 +160,25 @@ const updateLasers = (gameState: GameState): void => {
     }
 };
 
-const updatePlayer = (gameState: GameState, input: PlayerInput, playerUID: string): void => {
+const updateBullets = (gameState: GameState, predictingForPlayerUID: string | null): void => {
+    for (let bullet of gameState.bullets) {
+        if (predictingForPlayerUID === null || bullet.predicted || bullet.ownerUID !== predictingForPlayerUID) { 
+            bullet.position = v2add(bullet.position, v2fromRadial(BULLET_SPEED, bullet.angle));
+        }
+        bullet.age++;
+    }
+};
+
+const updatePlayer = (gameState: GameState, input: PlayerInput, playerUID: string, predicting: boolean): void => {
     const steppedPlayer = stepPlayerState(input, playerUID, gameState.players[playerUID]);
     gameState.players[playerUID] = steppedPlayer.newState;
     if (steppedPlayer.newLaser !== null) {
         gameState.lasers.push(steppedPlayer.newLaser);
+    }
+    if (steppedPlayer.newBullet !== null) {
+        const newBullet = steppedPlayer.newBullet;
+        newBullet.predicted = predicting;
+        gameState.bullets.push(newBullet);
     }
 };
 
@@ -149,8 +190,18 @@ export const stepGameState = (inputMap: UIDMap<PlayerInput>, historicalStates: G
     result.predictedFrameCount = result.frameCount;
 
     updateLasers(result);
+    updateBullets(result, null);
     for (let playerUID in result.players) {
-        updatePlayer(result, inputMap[playerUID], playerUID);
+        updatePlayer(result, inputMap[playerUID], playerUID, false);
+    }
+
+    // Fast-forward bullets from the shooters' reference frames to the server reference frame
+    for (let bullet of result.bullets) {
+        if (bullet.age === 0) {
+            for (let i = inputMap[bullet.ownerUID].frame; i < result.frameCount; ++i) {
+                bullet.position = v2add(bullet.position, v2fromRadial(BULLET_SPEED, bullet.angle));
+            }
+        }
     }
 
     // Resolve laser collisions
@@ -175,7 +226,8 @@ export const predictGameState = (input: PlayerInput, playerUID: string, gameStat
     result.predictedFrameCount++;
 
     updateLasers(result);
-    updatePlayer(result, input, playerUID);
+    updateBullets(result, playerUID);
+    updatePlayer(result, input, playerUID, true);
 
     // Predict laser collisions in local reference frame
     if (newFrame) {
