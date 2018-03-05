@@ -1,7 +1,7 @@
 module Game(
     Game
   , gameTime, gamePos, gameAngle
-  , defaultGame
+  , newGame
   , stepGame
 ) where
 
@@ -17,8 +17,8 @@ data Game = GameState
 speed :: Float
 speed = 5
 
-defaultGame :: Game
-defaultGame = GameState 0 (0, 0) 0
+newGame :: Point -> Game
+newGame pos = GameState 0 pos 0
 
 updatePos :: Bool -> Float -> Point -> Point
 updatePos False _ = id
