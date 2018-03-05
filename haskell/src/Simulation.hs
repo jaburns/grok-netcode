@@ -1,6 +1,6 @@
 module Simulation(
     Simulation
-  , defaultSim
+  , newDefaultSim
   , simGames
   , handleSimEvent
   , updateSim
@@ -8,17 +8,21 @@ module Simulation(
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
+import System.Random
 
 import Game (Game, defaultGame, stepGame)
 import Input (GameInputs, defaultGameInputs, updateInputsFromEvent)
 
 data Simulation = SimulationState
   { simGames  :: [Game]
+  , simRandom :: StdGen
   , simInputs :: GameInputs
   }
 
-defaultSim :: Simulation
-defaultSim = SimulationState [] defaultGameInputs
+newDefaultSim :: IO Simulation
+newDefaultSim = do
+    stdGen <- newStdGen
+    return $ SimulationState [] stdGen defaultGameInputs
 
 handleSimEvent :: Event -> Simulation -> Simulation
 handleSimEvent (EventKey (SpecialKey KeyEnter) Down _ _) sim = sim { simGames = defaultGame : (simGames sim) }
