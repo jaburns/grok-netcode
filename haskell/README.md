@@ -4,7 +4,8 @@ To build on any platform first [install stack](https://docs.haskellstack.org/en/
 the following from the project root:
 
 ```
+stack setup
 stack build
-cp win64_freeglut\glut32.dll .  # <-- Windows only
+# Windows only: cp win64_freeglut\glut32.dll .
 stack exec grok-netcode
 ```
