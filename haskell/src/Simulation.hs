@@ -1,7 +1,7 @@
 module Simulation(
     Simulation
-  , simGames, simInputs
   , defaultSim
+  , simGames
   , handleSimEvent
   , updateSim
 ) where
