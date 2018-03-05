@@ -2,7 +2,6 @@ module Main(
     main
 ) where
 
-import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 
 import Render(renderSim)

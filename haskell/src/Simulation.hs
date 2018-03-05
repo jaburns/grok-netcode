@@ -8,7 +8,6 @@ module Simulation(
 
 import Control.Monad
 import Control.Monad.Trans.State
-import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
@@ -43,4 +42,4 @@ handleSimEvent (EventKey (SpecialKey KeyEnter) Down _ _) sim = addGame sim
 handleSimEvent event sim = sim { simInputs = updateInputsFromEvent event (simInputs sim) }
 
 updateSim :: Float -> Simulation -> Simulation
-updateSim dt sim = sim { simGames = map (stepGame (simInputs sim)) (simGames sim) }
+updateSim _ sim = sim { simGames = map (stepGame (simInputs sim)) (simGames sim) }
