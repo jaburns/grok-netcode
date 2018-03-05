@@ -1,6 +1,6 @@
 module Game(
     Game
-  , gameTime, gamePos, gameAngle
+  , gamePos, gameAngle
   , newGame
   , stepGame
 ) where
@@ -31,7 +31,7 @@ stepGame inputs game = game
   , gamePos = updatePos (inputUp inputs) newAngle (gamePos game)
   }
   where
-    newAngle = gameAngle game + 0.1 * fromIntegral turn
+    newAngle = gameAngle game + 0.1 * turn
     turn | inputLeft  inputs =  1
          | inputRight inputs = -1
          | otherwise         =  0

@@ -4,7 +4,7 @@ module Render(
 
 import Graphics.Gloss
 
-import Game (Game, gameTime, gameAngle, gamePos)
+import Game (Game, gameAngle, gamePos)
 import Simulation (Simulation, simGames)
 
 shipRadius :: Float
@@ -22,9 +22,6 @@ translatePt (x, y) = translate x y
 rotateNegRads :: Float -> Picture -> Picture
 rotateNegRads x = rotate (-x * 180 / pi)
 
-drawBox :: Point -> Point -> Picture
-drawBox pos (w, h) = translatePt pos $ rectangleWire w h
-
 drawShip :: Game -> Picture
 drawShip game = translatePt (gamePos game) $ rotateNegRads (gameAngle game) $ lineLoop [ 
     (-0.707 * shipRadius, -0.707 * shipRadius)
@@ -33,9 +30,9 @@ drawShip game = translatePt (gamePos game) $ rotateNegRads (gameAngle game) $ li
   ]
 
 renderGame :: Point -> Game -> Picture
-renderGame pos game = pictures [drawShip game, drawBox pos (viewBoxSize,viewBoxSize)]
+renderGame pos game = translatePt pos $ pictures [drawShip game, rectangleWire viewBoxSize viewBoxSize]
 
 renderSim :: Simulation -> Picture
-renderSim = pictures . map renderGameAt . zip [-viewBoxSize - viewBoxPadding, 0..] . simGames
+renderSim = pictures . map renderGameAt . zip [-viewBoxSize - viewBoxPadding, 0..] . reverse . simGames
   where
     renderGameAt (pos, game) = renderGame (pos, 0) game
