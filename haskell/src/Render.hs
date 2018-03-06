@@ -1,11 +1,10 @@
 module Render(
-    renderSim
+    renderGames
 ) where
 
 import Graphics.Gloss
 
 import Game (Game, gameAngle, gamePos)
-import Simulation (Simulation, simGames)
 
 shipRadius :: Float
 shipRadius = 15
@@ -32,7 +31,7 @@ drawShip game = translatePt (gamePos game) $ rotateNegRads (gameAngle game) $ li
 renderGame :: Point -> Game -> Picture
 renderGame pos game = translatePt pos $ pictures [drawShip game, rectangleWire viewBoxSize viewBoxSize]
 
-renderSim :: Simulation -> Picture
-renderSim = pictures . map renderGameAt . zip [-viewBoxSize - viewBoxPadding, 0..] . reverse . simGames
+renderGames :: [Game] -> Picture
+renderGames = pictures . map renderGameAt . zip [-viewBoxSize - viewBoxPadding, 0..] . reverse
   where
     renderGameAt (pos, game) = renderGame (pos, 0) game

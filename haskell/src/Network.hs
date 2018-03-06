@@ -1,7 +1,11 @@
 module Network(
-    createNetwork
-  , clientSendPacket, serverSendPacket
-  , updateNetwork
+    NetworkState
+  , Network
+  , createNetwork
+  , clientSendPacket, clientReceivePackets
+  , serverSendPacket, serverReceivePackets
+  , clearPacketQueues
+  , runNetwork
 ) where
 
 import Control.Monad.Trans.State
@@ -19,11 +23,12 @@ data NetworkState = NetworkState'
   { netRNG           :: StdGen
   , netClientPackets :: [ClientPacket]
   , netServerPackets :: [ServerPacket]
+  -- have lists for packets in transit and packets ready to be read,
   }
 
-type NetworkM = State NetworkState
+type Network = State NetworkState
 
-buildPacket :: a -> NetworkM (Packet a)
+buildPacket :: a -> Network (Packet a)
 buildPacket contents = do
     net <- get
     let (rand, newRNG) = random $ netRNG net
@@ -32,30 +37,42 @@ buildPacket contents = do
   where
     getLatency norm = 0.1 + 0.1 * norm
 
-elapsePacket :: Float -> Packet a -> Packet a
-elapsePacket dt (latency, x) = (latency - dt, x)
-
-collectElapsedPackets :: [Packet a] -> ([Packet a], a)
-collectElapsedPackets = undefined
-
-createNetwork :: IO (NetworkM ())
+createNetwork :: IO (Network ())
 createNetwork = do
     rng <- newStdGen
     return . put $ NetworkState' rng [] []
 
-clientSendPacket :: TaggedInputs -> NetworkM ()
+clientSendPacket :: TaggedInputs -> Network ()
 clientSendPacket contents = do
     newPacket <- buildPacket contents
     modify (\net -> net { netClientPackets = newPacket : (netClientPackets net) })
 
-serverSendPacket :: Game -> NetworkM ()
+clientReceivePackets :: Network [Game]
+clientReceivePackets = undefined
+
+serverSendPacket :: Game -> Network ()
 serverSendPacket contents = do
     newPacket <- buildPacket contents
     modify (\net -> net { netServerPackets = newPacket : (netServerPackets net) })
 
-updateNetwork :: Float -> NetworkM ()
-updateNetwork dt = do
-    modify (\net -> net { 
-          netServerPackets = map (elapsePacket dt) (netServerPackets net)
-        , netClientPackets = map (elapsePacket dt) (netClientPackets net) })
-     -- TODO collectElapsedPackets and do something with them
+serverReceivePackets :: Network [TaggedInputs]
+serverReceivePackets = undefined
+
+clearPacketQueues :: Network ()
+clearPacketQueues = undefined
+
+runNetwork :: Float -> NetworkState -> (Float -> Network ()) -> NetworkState
+runNetwork dt net update = execState update' net
+  where
+    update' = do
+        modify (updatePackets dt)
+        update dt
+     -- TODO collectElapsedPackets and place them in to the ready lists to be consumed by the receive functions
+
+updatePackets :: Float -> NetworkState -> NetworkState
+updatePackets dt net = net 
+    { netServerPackets = map (elapsePacket dt) (netServerPackets net)
+    , netClientPackets = map (elapsePacket dt) (netClientPackets net) 
+    }
+  where
+    elapsePacket dt (latency, x) = (latency - dt, x)

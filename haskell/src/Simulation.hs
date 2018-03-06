@@ -1,7 +1,7 @@
 module Simulation(
     Simulation
   , newDefaultSim
-  , simGames
+  , simClients, clientGame
   , handleSimEvent
   , updateSim
 ) where
@@ -11,13 +11,24 @@ import Control.Monad.Trans.State
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
+import Network (Network, NetworkState, runNetwork)
 import Game (Game, newGame, stepGame)
 import Input (GameInputs, defaultGameInputs, wasdMapping, updateInputsWithEvent)
 
 data Simulation = Simulation'
-  { simGames  :: [Game]
-  , simRandom :: StdGen
-  , simInputs :: GameInputs
+  { simRandom  :: StdGen
+  , simInputs  :: GameInputs
+  , simClients :: [Client]
+  , simServer  :: Server
+  , simNetwork :: NetworkState
+  }
+
+data Client = Client'
+  { clientGame :: Game
+  }
+
+data Server = Server'
+  { serverGame :: Game
   }
 
 randoms' :: Int -> StdGen -> ([Float], StdGen)
@@ -29,7 +40,7 @@ newDefaultSim = do
     return $ Simulation' [] stdGen defaultGameInputs
 
 addGame :: Simulation -> Simulation
-addGame sim =  sim
+addGame sim = sim
   { simGames = builtGame : (simGames sim)
   , simRandom = newRandom
   }
@@ -43,3 +54,21 @@ handleSimEvent event sim = sim { simInputs = updateInputsWithEvent wasdMapping e
 
 updateSim :: Float -> Simulation -> Simulation
 updateSim _ sim = sim { simGames = map (stepGame (simInputs sim)) (simGames sim) }
+
+updateNetSim :: Float -> Simulation -> Simulation
+updateNetSim dt sim = sim 
+  { simNetwork = runNetwork dt (simNetwork sim) updateInNetwork
+  }
+
+updateInNetwork :: Float -> Network ()
+updateInNetwork dt = undefined
+
+updateClient :: Client -> Network Client
+updateClient = undefined
+
+updateServer :: Server -> Network Server
+updateServer = undefined
+
+-- updateX :: Float -> Simulation -> Network Simulation
+-- updateX dt sim = do
+    
