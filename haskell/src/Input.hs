@@ -1,13 +1,24 @@
 module Input(
-    GameInputs
+    TaggedInputs
+  , GameInputs
   , KeyMapping
   , defaultGameInputs
   , inputUp, inputLeft, inputRight
+  , taggedInputs, taggedUUID, taggedFrame
   , standardMapping, wasdMapping
   , updateInputsWithEvent
+  , tagInputs
 ) where
 
+import Data.UUID(UUID)
+import Data.UUID.V4(nextRandom)
 import Graphics.Gloss.Interface.Pure.Game
+
+data TaggedInputs = TaggedInputs'
+  { taggedInputs :: GameInputs
+  , taggedUUID   :: UUID
+  , taggedFrame  :: Int
+  }
 
 data GameInputs = GameInputs'
   { inputUp    :: Bool
@@ -40,3 +51,8 @@ evaluateMapping mapping key pressed inputs =
 updateInputsWithEvent :: KeyMapping -> Event -> GameInputs -> GameInputs
 updateInputsWithEvent mapping (EventKey key dir _ _) = evaluateMapping mapping key (dir == Down)
 updateInputsWithEvent _ _ = id
+
+tagInputs :: Int -> GameInputs -> IO TaggedInputs
+tagInputs frame inputs = do
+    uuid <- nextRandom 
+    return $ TaggedInputs' inputs uuid frame
