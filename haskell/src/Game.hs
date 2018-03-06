@@ -8,7 +8,7 @@ module Game(
 import Graphics.Gloss
 import Input (GameInputs, inputLeft, inputRight, inputUp)
 
-data Game = GameState
+data Game = Game'
   { gameTime  :: Int
   , gamePos   :: Point
   , gameAngle :: Float
@@ -18,7 +18,7 @@ speed :: Float
 speed = 5
 
 newGame :: Point -> Game
-newGame pos = GameState 0 pos 0
+newGame pos = Game' 0 pos 0
 
 updatePos :: Bool -> Float -> Point -> Point
 updatePos False _ = id
