@@ -33,5 +33,4 @@ renderGame pos game = translatePt pos $ pictures [drawShip game, rectangleWire v
 
 renderGames :: [Game] -> Picture
 renderGames = pictures . map renderGameAt . zip [-viewBoxSize - viewBoxPadding, 0..] . reverse
-  where
-    renderGameAt (pos, game) = renderGame (pos, 0) game
+  where renderGameAt (pos, game) = renderGame (pos, 0) game

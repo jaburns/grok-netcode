@@ -1,7 +1,7 @@
 module Network(
     Network
   , newNetworkFromSeed
-  , runNetwork
+  , updateNetwork
   , clientSendPacket, clientReceivePackets
   , serverSendPacket, serverReceivePackets
   , clearPacketQueues
@@ -23,8 +23,8 @@ data Network a b = Network'
 newNetworkFromSeed :: Float -> Network a b
 newNetworkFromSeed seed = Network' (read . show $ seed) [] [] [] []
 
-runNetwork :: Float -> Network a b -> Network a b
-runNetwork dt = execState $ do
+updateNetwork :: Float -> Network a b -> Network a b
+updateNetwork dt = execState $ do
     modify $ updatePackets dt
     modify movePacketsToReady
 
@@ -33,12 +33,11 @@ updatePackets dt net = net
   { netServerPackets = map elapsePacket (netServerPackets net)
   , netClientPackets = map elapsePacket (netClientPackets net) 
   }
-  where
-    elapsePacket (t, x) = (t - dt, x)
+  where elapsePacket (t, x) = (t - dt, x)
 
 movePacketsToReady :: Network a b -> Network a b
 movePacketsToReady (Network' rng as bs outAs outBs) = 
-    Network' rng (remaining as) (remaining bs) ((ready as) ++ outAs) ((ready bs) ++ outBs)
+    Network' rng (remaining as) (remaining bs) (outAs ++ ready as) (outBs ++ ready bs)
   where
     remaining = filter ((> 0) . fst)
     ready = map snd . filter ((<= 0) . fst)
@@ -46,7 +45,7 @@ movePacketsToReady (Network' rng as bs outAs outBs) =
 clientSendPacket :: a -> Network a b -> Network a b
 clientSendPacket payload = execState $ do
     newPacket <- buildPacket payload
-    modify (\net -> net { netClientPackets = newPacket : (netClientPackets net) })
+    modify (\net -> net { netClientPackets = netClientPackets net ++ [newPacket] })
 
 clientReceivePackets :: Network a b -> [b]
 clientReceivePackets = netServerReadyPayloads
@@ -54,7 +53,7 @@ clientReceivePackets = netServerReadyPayloads
 serverSendPacket :: b -> Network a b -> Network a b
 serverSendPacket payload = execState $ do
     newPacket <- buildPacket payload
-    modify (\net -> net { netServerPackets = newPacket : (netServerPackets net) })
+    modify (\net -> net { netServerPackets = netServerPackets net ++ [newPacket] })
 
 serverReceivePackets :: Network a b -> [a]
 serverReceivePackets = netClientReadyPayloads

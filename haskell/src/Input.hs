@@ -11,8 +11,8 @@ module Input(
 ) where
 
 import Data.UUID(UUID)
-import Data.UUID.V4(nextRandom)
 import Graphics.Gloss.Interface.Pure.Game
+import System.Random
 
 data TaggedInputs = TaggedInputs'
   { taggedInputs :: GameInputs
@@ -52,7 +52,6 @@ updateInputsWithEvent :: KeyMapping -> Event -> GameInputs -> GameInputs
 updateInputsWithEvent mapping (EventKey key dir _ _) = evaluateMapping mapping key (dir == Down)
 updateInputsWithEvent _ _ = id
 
-tagInputs :: Int -> GameInputs -> IO TaggedInputs
-tagInputs frame inputs = do
-    uuid <- nextRandom 
-    return $ TaggedInputs' inputs uuid frame
+tagInputs :: RandomGen g => Int -> GameInputs -> g -> (TaggedInputs, g)
+tagInputs frame inputs inRNG = (TaggedInputs' inputs uuid frame, newRNG)
+  where (uuid, newRNG) = random inRNG
