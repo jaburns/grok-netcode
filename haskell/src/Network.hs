@@ -1,78 +1,72 @@
 module Network(
-    NetworkState
-  , Network
-  , createNetwork
+    Network
+  , newNetworkFromSeed
+  , runNetwork
   , clientSendPacket, clientReceivePackets
   , serverSendPacket, serverReceivePackets
   , clearPacketQueues
-  , runNetwork
 ) where
 
 import Control.Monad.Trans.State
 import System.Random
 
-import Input(TaggedInputs)
-import Game(Game)
-
 type Packet a = (Float, a)
 
-type ClientPacket = Packet TaggedInputs
-type ServerPacket = Packet Game
-
-data NetworkState = NetworkState'
-  { netRNG           :: StdGen
-  , netClientPackets :: [ClientPacket]
-  , netServerPackets :: [ServerPacket]
-  -- have lists for packets in transit and packets ready to be read,
+data Network a b = Network'
+  { netRNG                 :: StdGen
+  , netClientPackets       :: [Packet a]
+  , netServerPackets       :: [Packet b]
+  , netClientReadyPayloads :: [a]
+  , netServerReadyPayloads :: [b]
   }
 
-type Network = State NetworkState
+newNetworkFromSeed :: Float -> Network a b
+newNetworkFromSeed seed = Network' (read . show $ seed) [] [] [] []
 
-buildPacket :: a -> Network (Packet a)
-buildPacket contents = do
+runNetwork :: Float -> Network a b -> Network a b
+runNetwork dt = execState $ do
+    modify $ updatePackets dt
+    modify movePacketsToReady
+
+updatePackets :: Float -> Network a b -> Network a b
+updatePackets dt net = net
+  { netServerPackets = map elapsePacket (netServerPackets net)
+  , netClientPackets = map elapsePacket (netClientPackets net) 
+  }
+  where
+    elapsePacket (t, x) = (t - dt, x)
+
+movePacketsToReady :: Network a b -> Network a b
+movePacketsToReady (Network' rng as bs outAs outBs) = 
+    Network' rng (remaining as) (remaining bs) ((ready as) ++ outAs) ((ready bs) ++ outBs)
+  where
+    remaining = filter ((> 0) . fst)
+    ready = map snd . filter ((<= 0) . fst)
+
+clientSendPacket :: a -> Network a b -> Network a b
+clientSendPacket payload = execState $ do
+    newPacket <- buildPacket payload
+    modify (\net -> net { netClientPackets = newPacket : (netClientPackets net) })
+
+clientReceivePackets :: Network a b -> [b]
+clientReceivePackets = netServerReadyPayloads
+
+serverSendPacket :: b -> Network a b -> Network a b
+serverSendPacket payload = execState $ do
+    newPacket <- buildPacket payload
+    modify (\net -> net { netServerPackets = newPacket : (netServerPackets net) })
+
+serverReceivePackets :: Network a b -> [a]
+serverReceivePackets = netClientReadyPayloads
+
+clearPacketQueues :: Network a b -> Network a b
+clearPacketQueues net = net { netClientReadyPayloads = [], netServerReadyPayloads = [] }
+ 
+buildPacket :: p -> State (Network a b) (Packet p)
+buildPacket payload = do
     net <- get
     let (rand, newRNG) = random $ netRNG net
     put $ net { netRNG = newRNG }
-    return (getLatency rand, contents)
+    return (getLatency rand, payload)
   where
     getLatency norm = 0.1 + 0.1 * norm
-
-createNetwork :: IO (Network ())
-createNetwork = do
-    rng <- newStdGen
-    return . put $ NetworkState' rng [] []
-
-clientSendPacket :: TaggedInputs -> Network ()
-clientSendPacket contents = do
-    newPacket <- buildPacket contents
-    modify (\net -> net { netClientPackets = newPacket : (netClientPackets net) })
-
-clientReceivePackets :: Network [Game]
-clientReceivePackets = undefined
-
-serverSendPacket :: Game -> Network ()
-serverSendPacket contents = do
-    newPacket <- buildPacket contents
-    modify (\net -> net { netServerPackets = newPacket : (netServerPackets net) })
-
-serverReceivePackets :: Network [TaggedInputs]
-serverReceivePackets = undefined
-
-clearPacketQueues :: Network ()
-clearPacketQueues = undefined
-
-runNetwork :: Float -> NetworkState -> (Float -> Network ()) -> NetworkState
-runNetwork dt net update = execState update' net
-  where
-    update' = do
-        modify (updatePackets dt)
-        update dt
-     -- TODO collectElapsedPackets and place them in to the ready lists to be consumed by the receive functions
-
-updatePackets :: Float -> NetworkState -> NetworkState
-updatePackets dt net = net 
-    { netServerPackets = map (elapsePacket dt) (netServerPackets net)
-    , netClientPackets = map (elapsePacket dt) (netClientPackets net) 
-    }
-  where
-    elapsePacket dt (latency, x) = (latency - dt, x)
