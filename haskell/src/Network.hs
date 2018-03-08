@@ -1,9 +1,9 @@
 module Network(
     Network
-  , newNetworkFromSeed
+  , newNetwork
   , updateNetwork
-  , clientSendPacket, clientReceivePackets
-  , serverSendPacket, serverReceivePackets
+  , clientSendPackets, clientReceivePackets
+  , serverSendPackets, serverReceivePackets
   , clearPacketQueues
 ) where
 
@@ -12,16 +12,17 @@ import System.Random
 
 type Packet a = (Float, a)
 
-data Network a b = Network'
+data Network client server = Network'
   { netRNG                 :: StdGen
-  , netClientPackets       :: [Packet a]
-  , netServerPackets       :: [Packet b]
-  , netClientReadyPayloads :: [a]
-  , netServerReadyPayloads :: [b]
+  , netLatency             :: (Float, Float)
+  , netClientPackets       :: [Packet client]
+  , netServerPackets       :: [Packet server]
+  , netClientReadyPayloads :: [client]
+  , netServerReadyPayloads :: [server]
   }
 
-newNetworkFromSeed :: Float -> Network a b
-newNetworkFromSeed seed = Network' (read . show $ seed) [] [] [] []
+newNetwork :: StdGen -> Network a b
+newNetwork rng = Network' rng (0.05, 0.025) [] [] [] [] 
 
 updateNetwork :: Float -> Network a b -> Network a b
 updateNetwork dt = execState $ do
@@ -36,24 +37,24 @@ updatePackets dt net = net
   where elapsePacket (t, x) = (t - dt, x)
 
 movePacketsToReady :: Network a b -> Network a b
-movePacketsToReady (Network' rng as bs outAs outBs) = 
-    Network' rng (remaining as) (remaining bs) (outAs ++ ready as) (outBs ++ ready bs)
+movePacketsToReady (Network' rng lat as bs outAs outBs) = 
+    Network' rng lat (remaining as) (remaining bs) (outAs ++ ready as) (outBs ++ ready bs)
   where
     remaining = filter ((> 0) . fst)
     ready = map snd . filter ((<= 0) . fst)
 
-clientSendPacket :: a -> Network a b -> Network a b
-clientSendPacket payload = execState $ do
-    newPacket <- buildPacket payload
-    modify (\net -> net { netClientPackets = netClientPackets net ++ [newPacket] })
+clientSendPackets :: [a] -> Network a b -> Network a b
+clientSendPackets payloads = execState $ do
+    newPackets <- mapM buildPacket payloads
+    modify (\net -> net { netClientPackets = netClientPackets net ++ newPackets })
 
 clientReceivePackets :: Network a b -> [b]
 clientReceivePackets = netServerReadyPayloads
 
-serverSendPacket :: b -> Network a b -> Network a b
-serverSendPacket payload = execState $ do
-    newPacket <- buildPacket payload
-    modify (\net -> net { netServerPackets = netServerPackets net ++ [newPacket] })
+serverSendPackets :: [b] -> Network a b -> Network a b
+serverSendPackets payload = execState $ do
+    newPackets <- mapM buildPacket payload
+    modify (\net -> net { netServerPackets = netServerPackets net ++ newPackets })
 
 serverReceivePackets :: Network a b -> [a]
 serverReceivePackets = netClientReadyPayloads
@@ -66,6 +67,6 @@ buildPacket payload = do
     net <- get
     let (rand, newRNG) = random $ netRNG net
     put $ net { netRNG = newRNG }
-    return (getLatency rand, payload)
+    return (getLatency (netLatency net) rand, payload)
   where
-    getLatency norm = 0.1 + 0.1 * norm
+    getLatency (base, var) norm = base + var * norm

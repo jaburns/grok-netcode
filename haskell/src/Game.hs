@@ -1,6 +1,6 @@
 module Game(
     Game
-  , gamePos, gameAngle
+  , gamePos, gameAngle, gameTime
   , newGame
   , stepGame
 ) where
@@ -15,7 +15,7 @@ data Game = Game'
   }
 
 speed :: Float
-speed = 5
+speed = 2.5
 
 newGame :: Point -> Game
 newGame pos = Game' 0 pos 0
@@ -31,7 +31,7 @@ stepGame inputs game = game
   , gamePos = updatePos (inputUp inputs) newAngle (gamePos game)
   }
   where
-    newAngle = gameAngle game + 0.1 * turn
+    newAngle = gameAngle game + 0.05 * turn
     turn | inputLeft  inputs =  1
          | inputRight inputs = -1
          | otherwise         =  0
