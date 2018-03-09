@@ -8,6 +8,7 @@ module Network(
 ) where
 
 import Control.Monad.Trans.State
+import Data.Maybe
 import System.Random
 
 type Packet a = (Float, a)
@@ -15,6 +16,7 @@ type Packet a = (Float, a)
 data Network client server = Network'
   { netRNG                 :: StdGen
   , netLatency             :: (Float, Float)
+  , netLossRate            :: Float
   , netClientPackets       :: [Packet client]
   , netServerPackets       :: [Packet server]
   , netClientReadyPayloads :: [client]
@@ -22,7 +24,7 @@ data Network client server = Network'
   }
 
 newNetwork :: StdGen -> Network a b
-newNetwork rng = Network' rng (0.05, 0.025) [] [] [] [] 
+newNetwork rng = Network' rng (0.05, 0.025) 0 [] [] [] []
 
 updateNetwork :: Float -> Network a b -> Network a b
 updateNetwork dt = execState $ do
@@ -37,15 +39,16 @@ updatePackets dt net = net
   where elapsePacket (t, x) = (t - dt, x)
 
 movePacketsToReady :: Network a b -> Network a b
-movePacketsToReady (Network' rng lat as bs outAs outBs) = 
-    Network' rng lat (remaining as) (remaining bs) (outAs ++ ready as) (outBs ++ ready bs)
+movePacketsToReady (Network' rng lat loss as bs outAs outBs) =
+    Network' rng lat loss (remaining as) (remaining bs) (outAs ++ ready as) (outBs ++ ready bs)
   where
     remaining = filter ((> 0) . fst)
     ready = map snd . filter ((<= 0) . fst)
 
 clientSendPackets :: [a] -> Network a b -> Network a b
 clientSendPackets payloads = execState $ do
-    newPackets <- mapM buildPacket payloads
+    maybeNewPackets <- mapM maybeBuildPacket payloads
+    let newPackets = catMaybes maybeNewPackets
     modify (\net -> net { netClientPackets = netClientPackets net ++ newPackets })
 
 clientReceivePackets :: Network a b -> [b]
@@ -53,7 +56,8 @@ clientReceivePackets = netServerReadyPayloads
 
 serverSendPackets :: [b] -> Network a b -> Network a b
 serverSendPackets payload = execState $ do
-    newPackets <- mapM buildPacket payload
+    maybeNewPackets <- mapM maybeBuildPacket payload
+    let newPackets = catMaybes maybeNewPackets
     modify (\net -> net { netServerPackets = netServerPackets net ++ newPackets })
 
 serverReceivePackets :: Network a b -> [a]
@@ -62,11 +66,16 @@ serverReceivePackets = netClientReadyPayloads
 clearPacketQueues :: Network a b -> Network a b
 clearPacketQueues net = net { netClientReadyPayloads = [], netServerReadyPayloads = [] }
  
-buildPacket :: p -> State (Network a b) (Packet p)
-buildPacket payload = do
+maybeBuildPacket :: p -> State (Network a b) (Maybe (Packet p))
+maybeBuildPacket payload = do
     net <- get
-    let (rand, newRNG) = random $ netRNG net
-    put $ net { netRNG = newRNG }
-    return (getLatency (netLatency net) rand, payload)
+    let (rand0, rng0) = random $ netRNG net
+    if rand0 < (netLossRate net) then do
+        put $ net { netRNG = rng0 }
+        return Nothing
+    else do
+        let (rand1, rng1) = random rng0
+        put $ net { netRNG = rng1 }
+        return $ Just (getLatency (netLatency net) rand1, payload)
   where
-    getLatency (base, var) norm = base + var * norm
+    getLatency (base, var) rand = base + var * rand
