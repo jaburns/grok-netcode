@@ -42,11 +42,11 @@ wasdMapping :: KeyMapping
 wasdMapping = KeyMapping' (Char 'w') (Char 'a') (Char 'd')
 
 evaluateMapping :: KeyMapping -> Key -> Bool -> GameInputs -> GameInputs
-evaluateMapping mapping key pressed inputs =
-    if (key == mapUp    mapping) then inputs { inputUp    = pressed } else
-    if (key == mapLeft  mapping) then inputs { inputLeft  = pressed } else
-    if (key == mapRight mapping) then inputs { inputRight = pressed } else
-    inputs
+evaluateMapping mapping key pressed inputs
+    | key == mapUp    mapping = inputs { inputUp    = pressed }
+    | key == mapLeft  mapping = inputs { inputLeft  = pressed }
+    | key == mapRight mapping = inputs { inputRight = pressed }
+    | otherwise = inputs
 
 updateInputsWithEvent :: KeyMapping -> Event -> GameInputs -> GameInputs
 updateInputsWithEvent mapping (EventKey key dir _ _) = evaluateMapping mapping key (dir == Down)

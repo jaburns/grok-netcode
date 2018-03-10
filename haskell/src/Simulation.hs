@@ -10,6 +10,7 @@ module Simulation(
 import Control.Monad
 import Control.Monad.Trans.State
 import Data.UUID(UUID)
+import Data.Map.Strict
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
@@ -21,6 +22,8 @@ import Input (GameInputs, TaggedInputs, KeyMapping, defaultGameInputs, wasdMappi
 type ServerPayload = Game
 type ClientPayload = TaggedInputs
 type SimNetwork = Network ClientPayload ServerPayload
+
+type Donk = Map UUID GameInputs
 
 data Simulation = Simulation'
   { simRandom  :: StdGen
@@ -98,8 +101,7 @@ updateServer' inputPackets = execState $ do
 updateClient :: TaggedInputs -> [ServerPayload] -> Client -> ([ClientPayload], Client)
 updateClient inputs [] client = ([inputs], client)
 updateClient inputs (game:_) client = ([inputs], client { clientGame = latestGame game (clientGame client) })
-  where
-    latestGame new old = if gameTime new >= gameTime old then new else old
+  where latestGame new old = if gameTime new >= gameTime old then new else old
 
 getRenderableGames :: Simulation -> [Game]
 getRenderableGames (Simulation' _ _ clients (Server' sgame) _) = [sgame] ++ cgames
