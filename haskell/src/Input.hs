@@ -1,10 +1,11 @@
 module Input(
     TaggedInputs
   , GameInputs
+  , InputID
   , KeyMapping
   , defaultGameInputs
   , inputUp, inputLeft, inputRight
-  , taggedInputs, taggedUUID, taggedFrame
+  , taggedInputs, taggedID, taggedFrame
   , standardMapping, wasdMapping
   , updateInputsWithEvent
   , tagInputs
@@ -14,9 +15,11 @@ import Data.UUID(UUID)
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
+type InputID = UUID
+
 data TaggedInputs = TaggedInputs'
   { taggedInputs :: GameInputs
-  , taggedUUID   :: UUID
+  , taggedID     :: InputID
   , taggedFrame  :: Int
   }
 

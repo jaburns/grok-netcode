@@ -11,14 +11,14 @@ import Control.Monad.Trans.State
 import Data.Maybe
 import System.Random
 
-type Packet a = (Float, a)
+type InTransit a = (Float, a)
 
 data Network client server = Network'
   { netRNG                 :: StdGen
   , netLatency             :: (Float, Float)
   , netLossRate            :: Float
-  , netClientPackets       :: [Packet client]
-  , netServerPackets       :: [Packet server]
+  , netClientPackets       :: [InTransit client]
+  , netServerPackets       :: [InTransit server]
   , netClientReadyPayloads :: [client]
   , netServerReadyPayloads :: [server]
   }
@@ -66,7 +66,7 @@ serverReceivePackets = netClientReadyPayloads
 clearPacketQueues :: Network a b -> Network a b
 clearPacketQueues net = net { netClientReadyPayloads = [], netServerReadyPayloads = [] }
  
-maybeBuildPacket :: p -> State (Network a b) (Maybe (Packet p))
+maybeBuildPacket :: p -> State (Network a b) (Maybe (InTransit p))
 maybeBuildPacket payload = do
     net <- get
     let (rand0, rng0) = random $ netRNG net

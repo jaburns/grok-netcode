@@ -1,29 +1,28 @@
 module Simulation(
     Simulation
   , newSimulation
-  , simClients, clientGame
   , handleSimEvent
   , updateSim
-  , getRenderableGames
+  , renderSim
 ) where
 
 import Control.Monad
 import Control.Monad.Trans.State
-import Data.UUID(UUID)
-import Data.Map.Strict
+import qualified Data.Map.Strict as M
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
 import Network (Network, newNetwork, updateNetwork, clientReceivePackets, clientSendPackets, 
     serverReceivePackets, serverSendPackets, clearPacketQueues)
-import Game (Game, newGame, stepGame, gameTime)
-import Input (GameInputs, TaggedInputs, KeyMapping, defaultGameInputs, wasdMapping, updateInputsWithEvent, tagInputs, taggedInputs)
+import Game (Game, PlayerID, newGame, stepGame, gameTime, renderGame)
+import Input (GameInputs, TaggedInputs, KeyMapping, defaultGameInputs, wasdMapping, 
+    updateInputsWithEvent, tagInputs, taggedInputs)
 
-type ServerPayload = Game
-type ClientPayload = TaggedInputs
-type SimNetwork = Network ClientPayload ServerPayload
 
-type Donk = Map UUID GameInputs
+type ServerPacket = Game
+type ClientPacket = (PlayerID, TaggedInputs)
+
+type SimNetwork = Network ClientPacket ServerPacket
 
 data Simulation = Simulation'
   { simRandom  :: StdGen
@@ -34,75 +33,96 @@ data Simulation = Simulation'
   }
 
 data Client = Client'
-  { clientUID          :: UUID
+  { clientPlayerID     :: PlayerID
   , clientKeyMapping   :: KeyMapping
   , clientInputHistory :: [GameInputs]
   , clientGame         :: Game
   }
 
 data Server = Server'
-  { serverGame :: Game
+  { serverGameHistory  :: [Game]
+  , serverInputBuffers :: M.Map PlayerID TaggedInputs
   }
 
-newClient :: RandomGen g => g -> (Client, g)
-newClient rng = (Client' uuid wasdMapping [] (newGame (0,0)), newRNG)
-  where (uuid, newRNG) = random rng
 
 newSimulation :: StdGen -> Simulation
 newSimulation rng = Simulation' newRNG' defaultGameInputs clients server net
   where
-    genClients = runState . replicateM 1 $ state newClient
+    genClients = runState . replicateM 2 $ state newClient
     (clients, newRNG) = genClients rng
     (newRNG', netRNG) = split newRNG
-    server = Server' (newGame (0,0))
+    server = Server' [(newGame (0,0))] M.empty
     net = newNetwork netRNG
 
 handleSimEvent :: Event -> Simulation -> Simulation
 handleSimEvent event sim = sim { simInputs = updateInputsWithEvent wasdMapping event (simInputs sim) }
 
-zipInputsWithTags :: RandomGen g => Int -> GameInputs -> g -> ([TaggedInputs], g)
-zipInputsWithTags count inputs = runState . replicateM count . state $ tagInputs (-1) inputs
-
 updateSim :: Float -> Simulation -> Simulation
 updateSim dt = execState $ do
     modify $ \sim -> sim { simNetwork = updateNetwork dt (simNetwork sim) }
-    modify updateServer
-    modify updateClients
+    modify updateServerInSimulation
+    modify updateClientsInSimulation
     modify $ \sim -> sim { simNetwork = clearPacketQueues (simNetwork sim) }
+
+
+newClient :: RandomGen g => g -> (Client, g)
+newClient rng = (Client' uuid wasdMapping [] (newGame (0,0)), newRNG)
+  where (uuid, newRNG) = random rng
+
+updateClientsInSimulation :: Simulation -> Simulation
+updateClientsInSimulation sim = sim
+  { simClients = map snd ranClients 
+  , simRandom = newRNG
+  , simNetwork = clientSendPackets (concat . map fst $ ranClients) (simNetwork sim)
+  }
   where
-    updateClients sim = let
-        clients = simClients sim
-        packets = clientReceivePackets (simNetwork sim)
-        (newInputs, newRNG) = zipInputsWithTags (length clients) (simInputs sim) (simRandom sim)
-        runClient inputs client = updateClient inputs packets client
-        ranClients = zipWith runClient newInputs clients
-      in sim 
-        { simClients = map snd ranClients 
-        , simRandom = newRNG
-        , simNetwork = clientSendPackets (concat . map fst $ ranClients) (simNetwork sim)
-        }
-    updateServer sim = let
-        server = simServer sim
-        packets = serverReceivePackets (simNetwork sim)
-        newServer = updateServer' packets server 
-      in sim 
-        { simServer = newServer
-        , simNetwork = serverSendPackets [serverGame newServer] (simNetwork sim)
-        }
+    packets = clientReceivePackets (simNetwork sim)
+    (newInputs, newRNG) = zipInputsWithTags (length (simClients sim)) (simInputs sim) (simRandom sim)
+    runClient inputs client = updateClient inputs packets client
+    ranClients = zipWith runClient newInputs (simClients sim)
 
-updateServer' :: [ClientPayload] -> Server -> Server --  -> ([ServerPayload], Server)
-updateServer' inputPackets = execState $ do
-    mapM_ updateServerWithPackets inputPackets
-  where 
-    updateServerWithPackets :: TaggedInputs -> State Server ()
-    updateServerWithPackets packet = do
-        modify (\server -> server { serverGame = stepGame (taggedInputs packet) (serverGame server) })
+zipInputsWithTags :: RandomGen g => Int -> GameInputs -> g -> ([TaggedInputs], g)
+zipInputsWithTags count inputs = runState . replicateM count . state $ tagInputs (-1) inputs
 
-updateClient :: TaggedInputs -> [ServerPayload] -> Client -> ([ClientPayload], Client)
-updateClient inputs [] client = ([inputs], client)
-updateClient inputs (game:_) client = ([inputs], client { clientGame = latestGame game (clientGame client) })
+updateClient :: TaggedInputs -> [ServerPacket] -> Client -> ([ClientPacket], Client)
+updateClient inputs [] client = ([(clientPlayerID client, inputs)], client)
+updateClient inputs (game:_) client = ([(clientPlayerID client, inputs)], client { clientGame = latestGame game (clientGame client) })
   where latestGame new old = if gameTime new >= gameTime old then new else old
 
-getRenderableGames :: Simulation -> [Game]
-getRenderableGames (Simulation' _ _ clients (Server' sgame) _) = [sgame] ++ cgames
-  where cgames = map clientGame clients
+
+updateServerInSimulation :: Simulation -> Simulation
+updateServerInSimulation sim = sim 
+  { simServer = newServer
+  , simNetwork = serverSendPackets outgoingPackets (simNetwork sim)
+  }
+  where
+    packets = serverReceivePackets (simNetwork sim)
+    (outgoingPackets, newServer) = updateServer packets (simServer sim) 
+
+updateServer :: [ClientPacket] -> Server -> ([ServerPacket], Server)
+updateServer inputPackets server = ([head . serverGameHistory $ newServer], newServer)
+  where 
+    newServer = getNewServer server
+    getNewServer = execState $ do
+      mapM_ updateServerWithPacket inputPackets
+    updateServerWithPacket (_, inputs) = do
+        modify (\serv -> serv { serverGameHistory = [stepGame (taggedInputs inputs) (head . serverGameHistory $ server)] })
+
+
+renderSim :: Simulation -> Picture
+renderSim sim = pictures $ renderServer (head . serverGameHistory . simServer $ sim) : zipWith renderClient [0,1..] (map clientGame $ simClients sim)
+
+viewBoxSize :: Float
+viewBoxSize = 350
+
+viewBoxPadding :: Float
+viewBoxPadding = 10
+
+renderServer :: Game -> Picture
+renderServer = scale viewBoxSize viewBoxSize . renderGame
+
+renderClient :: Int -> Game -> Picture
+renderClient i = translate xOffset 0 . scale viewBoxSize viewBoxSize . renderGame
+  where xOffset | i == 0 = -viewBoxSize - viewBoxPadding
+                | i == 1 =  viewBoxSize + viewBoxPadding
+                | otherwise = undefined
