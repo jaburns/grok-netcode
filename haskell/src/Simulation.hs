@@ -93,7 +93,7 @@ updateClient serverGames inputs client = ([(clientPlayerID client, inputs)], new
       { clientGame = predictClientGame (clientPlayerID client) newInputs' newGame'
       , clientInputHistory = newInputs'
       }
-    newInputs' = inputs : clientInputHistory client
+    newInputs' = take 60 $ inputs : clientInputHistory client
     newGame' = case serverGames of 
                  (game:_) -> latestGame game (clientGame client)
                  []       -> clientGame client
