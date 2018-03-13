@@ -13,21 +13,22 @@ module Game(
 import Control.Monad
 import Control.Monad.Trans.State
 import qualified Data.Map.Strict as M
-import Data.UUID(UUID)
+import Data.UUID(UUID, nil)
 import Graphics.Gloss
 import System.Random
 
-import Input (GameInputs, inputLeft, inputRight, inputUp)
+import Input (GameInputs, InputID, inputLeft, inputRight, inputUp, inputID)
 import Palette (oneColor, twoColor, fgColor)
 
 
 type PlayerID = UUID
 
 data Ship = Ship'
-  { shipID    :: PlayerID
-  , shipColor :: Color
-  , shipPos   :: Point
-  , shipAngle :: Float
+  { shipID            :: PlayerID
+  , shipLatestInputID :: InputID
+  , shipColor         :: Color
+  , shipPos           :: Point
+  , shipAngle         :: Float
   }
 
 data Game = Game'
@@ -46,7 +47,7 @@ newGame :: Game
 newGame = Game' 0 []
 
 updateShip :: GameInputs -> Ship -> Ship
-updateShip inputs (Ship' pid col (x,y) angle) = Ship' pid col newPos newAngle 
+updateShip inputs (Ship' pid _ col (x,y) angle) = Ship' pid (inputID inputs) col newPos newAngle 
   where
     newAngle = angle + 0.05 * turn
     turn | inputLeft  inputs =  1
@@ -64,7 +65,7 @@ stepShips inputs = map stepShip
 addPlayerToGame :: RandomGen g => g -> Game -> (PlayerID, Game, g)
 addPlayerToGame rng game = (newID, game { gameShips = newShip : (gameShips game) }, newRNG')
   where
-    newShip = Ship' newID col (a - 0.5, b - 0.5) (2 * pi * c)
+    newShip = Ship' newID nil col (a - 0.5, b - 0.5) (2 * pi * c)
     (a:b:c:[], newRNG) = runState (replicateM 3 (state random)) rng
     (newID, newRNG') = random newRNG
     col = if length (gameShips game) `mod` 2 == 0 then oneColor else twoColor
@@ -89,7 +90,7 @@ renderClientGame pid (Game' _ ships) = pictures $ (color playerColor $ rectangle
                         Nothing -> fgColor
 
 drawShip :: Ship -> Picture
-drawShip (Ship' _ c (x,y) angle) = color c . translate x y $ rotate (-angle * 180 / pi) $ lineLoop [ 
+drawShip (Ship' _ _ c (x,y) angle) = color c . translate x y $ rotate (-angle * 180 / pi) $ lineLoop [ 
     (-0.707 * shipRadius, -0.707 * shipRadius)
   , (shipRadius, 0)
   , (-0.707 * shipRadius,  0.707 * shipRadius)
