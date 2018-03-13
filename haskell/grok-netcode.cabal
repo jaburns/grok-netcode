@@ -5,7 +5,7 @@ cabal-version:       >=1.10
 
 executable grok-netcode
   hs-source-dirs:      src
-  other-modules:       Game, Input, Network, Simulation
+  other-modules:       Game, Input, Network, Simulation, Palette
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5,

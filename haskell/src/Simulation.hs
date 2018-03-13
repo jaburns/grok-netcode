@@ -17,6 +17,7 @@ import Network (Network, newNetwork, updateNetwork, clientReceivePackets, client
 import Game (Game, PlayerID, newGame, stepGame, gameTime, renderGame)
 import Input (GameInputs, TaggedInputs, KeyMapping, defaultGameInputs, wasdMapping, 
     updateInputsWithEvent, tagInputs, taggedInputs)
+import Palette(mainColor)
 
 
 type ServerPacket = Game
@@ -109,8 +110,9 @@ updateServer inputPackets server = ([head . serverGameHistory $ newServer], newS
         modify (\serv -> serv { serverGameHistory = [stepGame (taggedInputs inputs) (head . serverGameHistory $ server)] })
 
 
+
 renderSim :: Simulation -> Picture
-renderSim sim = pictures $ renderServer (head . serverGameHistory . simServer $ sim) : zipWith renderClient [0,1..] (map clientGame $ simClients sim)
+renderSim sim = color mainColor . pictures $ renderServer (head . serverGameHistory . simServer $ sim) : zipWith renderClient [0,1..] (map clientGame $ simClients sim)
 
 viewBoxSize :: Float
 viewBoxSize = 350
