@@ -14,20 +14,19 @@ import System.Random
 
 import Network (Network, newNetwork, updateNetwork, clientReceivePackets, clientSendPackets, 
     serverReceivePackets, serverSendPackets, clearPacketQueues)
-import Game (Game, PlayerID, newGame, stepGame, gameTime, renderGame)
-import Input (GameInputs, TaggedInputs, KeyMapping, defaultGameInputs, wasdMapping, 
-    updateInputsWithEvent, tagInputs, taggedInputs)
-import Palette(mainColor)
+import Game (Game, PlayerID, newGame, gameTime, renderGame, addPlayerToGame, stepServerGame)
+import Input (GameInputs, AllInputs, KeyMapping(..), newInputs, updateInputsWithEvent, readGameInputs)
+import Palette(oneColor, fgColor, twoColor)
 
 
 type ServerPacket = Game
-type ClientPacket = (PlayerID, TaggedInputs)
+type ClientPacket = (PlayerID, GameInputs)
 
 type SimNetwork = Network ClientPacket ServerPacket
 
 data Simulation = Simulation'
   { simRandom  :: StdGen
-  , simInputs  :: GameInputs
+  , simInputs  :: AllInputs
   , simClients :: [Client]
   , simServer  :: Server
   , simNetwork :: SimNetwork
@@ -42,21 +41,23 @@ data Client = Client'
 
 data Server = Server'
   { serverGameHistory  :: [Game]
-  , serverInputBuffers :: M.Map PlayerID TaggedInputs
+  , serverInputBuffers :: M.Map PlayerID [GameInputs]
   }
 
 
-newSimulation :: StdGen -> Simulation
-newSimulation rng = Simulation' newRNG' defaultGameInputs clients server net
+newSimulation :: StdGen -> Simulation 
+newSimulation rng = Simulation' rng2 newInputs [client0, client1] server net
   where
-    genClients = runState . replicateM 2 $ state newClient
-    (clients, newRNG) = genClients rng
-    (newRNG', netRNG) = split newRNG
-    server = Server' [(newGame (0,0))] M.empty
+    (id0, game0, rng0) = addPlayerToGame rng  newGame
+    (id1, game1, rng1) = addPlayerToGame rng0 game0
+    client0 = Client' id0 Arrows [] newGame
+    client1 = Client' id1 WASD [] newGame
+    server = Server' [game1] M.empty
+    (rng2, netRNG) = split rng1
     net = newNetwork netRNG
 
 handleSimEvent :: Event -> Simulation -> Simulation
-handleSimEvent event sim = sim { simInputs = updateInputsWithEvent wasdMapping event (simInputs sim) }
+handleSimEvent event sim = sim { simInputs = updateInputsWithEvent event (simInputs sim) }
 
 updateSim :: Float -> Simulation -> Simulation
 updateSim dt = execState $ do
@@ -66,28 +67,23 @@ updateSim dt = execState $ do
     modify $ \sim -> sim { simNetwork = clearPacketQueues (simNetwork sim) }
 
 
-newClient :: RandomGen g => g -> (Client, g)
-newClient rng = (Client' uuid wasdMapping [] (newGame (0,0)), newRNG)
-  where (uuid, newRNG) = random rng
-
 updateClientsInSimulation :: Simulation -> Simulation
 updateClientsInSimulation sim = sim
-  { simClients = map snd ranClients 
-  , simRandom = newRNG
-  , simNetwork = clientSendPackets (concat . map fst $ ranClients) (simNetwork sim)
+  { simClients = map snd newClientsWithPackets 
+  , simNetwork = clientSendPackets (concat . map fst $ newClientsWithPackets) (simNetwork sim)
   }
   where
     packets = clientReceivePackets (simNetwork sim)
-    (newInputs, newRNG) = zipInputsWithTags (length (simClients sim)) (simInputs sim) (simRandom sim)
-    runClient inputs client = updateClient inputs packets client
-    ranClients = zipWith runClient newInputs (simClients sim)
+    clientInputs = readInputsForClients (simInputs sim) (gameTime . head . serverGameHistory . simServer $ sim) (simClients sim)
+    newClientsWithPackets = zipWith (updateClient packets) clientInputs (simClients sim)
 
-zipInputsWithTags :: RandomGen g => Int -> GameInputs -> g -> ([TaggedInputs], g)
-zipInputsWithTags count inputs = runState . replicateM count . state $ tagInputs (-1) inputs
+readInputsForClients :: AllInputs -> Int -> [Client] -> [GameInputs]
+readInputsForClients allInputs frame = map build
+  where build client = readGameInputs allInputs (clientKeyMapping client) frame
 
-updateClient :: TaggedInputs -> [ServerPacket] -> Client -> ([ClientPacket], Client)
-updateClient inputs [] client = ([(clientPlayerID client, inputs)], client)
-updateClient inputs (game:_) client = ([(clientPlayerID client, inputs)], client { clientGame = latestGame game (clientGame client) })
+updateClient :: [ServerPacket] -> GameInputs -> Client -> ([ClientPacket], Client)
+updateClient []       inputs client = ([(clientPlayerID client, inputs)], client)
+updateClient (game:_) inputs client = ([(clientPlayerID client, inputs)], client { clientGame = latestGame game (clientGame client) })
   where latestGame new old = if gameTime new >= gameTime old then new else old
 
 
@@ -103,16 +99,18 @@ updateServerInSimulation sim = sim
 updateServer :: [ClientPacket] -> Server -> ([ServerPacket], Server)
 updateServer inputPackets server = ([head . serverGameHistory $ newServer], newServer)
   where 
-    newServer = getNewServer server
-    getNewServer = execState $ do
-      mapM_ updateServerWithPacket inputPackets
-    updateServerWithPacket (_, inputs) = do
-        modify (\serv -> serv { serverGameHistory = [stepGame (taggedInputs inputs) (head . serverGameHistory $ server)] })
+    newServer = server { serverGameHistory = [newServerGame] }
+    newServerGame = stepServerGame (M.fromList inputPackets) (serverGameHistory server)
 
 
+title :: Picture
+title = scale 0.1 0.1 . color fgColor . text $ "Hello World"
 
 renderSim :: Simulation -> Picture
-renderSim sim = color mainColor . pictures $ renderServer (head . serverGameHistory . simServer $ sim) : zipWith renderClient [0,1..] (map clientGame $ simClients sim)
+renderSim sim = pictures [title, server sim, clients sim]
+  where
+    server = renderServer . head . serverGameHistory . simServer
+    clients = pictures . zipWith renderClient [0,1..] . map clientGame . simClients
 
 viewBoxSize :: Float
 viewBoxSize = 350
@@ -124,7 +122,7 @@ renderServer :: Game -> Picture
 renderServer = scale viewBoxSize viewBoxSize . renderGame
 
 renderClient :: Int -> Game -> Picture
-renderClient i = translate xOffset 0 . scale viewBoxSize viewBoxSize . renderGame
-  where xOffset | i == 0 = -viewBoxSize - viewBoxPadding
-                | i == 1 =  viewBoxSize + viewBoxPadding
-                | otherwise = undefined
+renderClient i = color col . translate xOffset 0 . scale viewBoxSize viewBoxSize . renderGame
+  where (col, xOffset) | i == 0 = (oneColor, -viewBoxSize - viewBoxPadding)
+                       | i == 1 = (twoColor,  viewBoxSize + viewBoxPadding)
+                       | otherwise = undefined

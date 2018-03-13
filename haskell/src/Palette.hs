@@ -1,5 +1,5 @@
 module Palette (
-    bgColor, mainColor
+    bgColor, fgColor, oneColor, twoColor
 ) where
 
 import Numeric(readHex)
@@ -11,10 +11,13 @@ hexColor (a:b:c:d:e:f:_) = makeColorI (get [a,b]) (get [c,d]) (get [e,f]) 255
 hexColor _ = undefined
 
 bgColor :: Color
-bgColor = hexColor "FAE3D9"
+bgColor = hexColor "252A34"
 
-mainColor :: Color 
-mainColor = hexColor "FFB6B9"
+fgColor :: Color
+fgColor = hexColor "EAEAEA"
 
---B  BBDED6
---C  61C0BF
+oneColor :: Color 
+oneColor = hexColor "08D9D6"
+
+twoColor :: Color
+twoColor = hexColor "FF2E63"

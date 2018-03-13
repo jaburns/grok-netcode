@@ -66,6 +66,7 @@ serverReceivePackets = netClientReadyPayloads
 clearPacketQueues :: Network a b -> Network a b
 clearPacketQueues net = net { netClientReadyPayloads = [], netServerReadyPayloads = [] }
  
+-- TODO use StateT Maybe monad transformer
 maybeBuildPacket :: p -> State (Network a b) (Maybe (InTransit p))
 maybeBuildPacket payload = do
     net <- get

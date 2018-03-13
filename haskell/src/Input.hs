@@ -1,60 +1,55 @@
 module Input(
-    TaggedInputs
+    AllInputs
   , GameInputs
-  , InputID
-  , KeyMapping
-  , defaultGameInputs
-  , inputUp, inputLeft, inputRight
-  , taggedInputs, taggedID, taggedFrame
-  , standardMapping, wasdMapping
+  , KeyMapping(..)
+  , newInputs
+  , inputUp, inputLeft, inputRight, inputFrame
   , updateInputsWithEvent
-  , tagInputs
+  , readGameInputs
 ) where
 
-import Data.UUID(UUID)
 import Graphics.Gloss.Interface.Pure.Game
-import System.Random
+import qualified Data.Map.Strict as M
 
-type InputID = UUID
+newtype AllInputs = AllInputs' (M.Map KeyMapping GameInputs)
 
-data TaggedInputs = TaggedInputs'
-  { taggedInputs :: GameInputs
-  , taggedID     :: InputID
-  , taggedFrame  :: Int
-  }
-
-data GameInputs = GameInputs'
+data GameInputs = GameInputs' -- TODO rename to PlayerInputs
   { inputUp    :: Bool
   , inputLeft  :: Bool
   , inputRight :: Bool
+  , inputFrame :: Int
   }
 
-data KeyMapping = KeyMapping'
+data KeyMapping = WASD | Arrows
+  deriving (Eq, Ord)
+
+data KeyMappingKeys = KeyMappingKeys'
   { mapUp    :: Key
   , mapLeft  :: Key
   , mapRight :: Key
   }
 
-defaultGameInputs :: GameInputs
-defaultGameInputs = GameInputs' False False False
+newInputs :: AllInputs
+newInputs = AllInputs' $ M.fromList [(WASD, newGameInputs), (Arrows, newGameInputs)]
 
-standardMapping :: KeyMapping
-standardMapping = KeyMapping' (SpecialKey KeyUp) (SpecialKey KeyLeft) (SpecialKey KeyRight)
+newGameInputs :: GameInputs
+newGameInputs = GameInputs' False False False (-1)
 
-wasdMapping :: KeyMapping
-wasdMapping = KeyMapping' (Char 'w') (Char 'a') (Char 'd')
+getKeys :: KeyMapping -> KeyMappingKeys
+getKeys WASD = KeyMappingKeys' (Char 'w') (Char 'a') (Char 'd')
+getKeys Arrows = KeyMappingKeys' (SpecialKey KeyUp) (SpecialKey KeyLeft) (SpecialKey KeyRight)
 
-evaluateMapping :: KeyMapping -> Key -> Bool -> GameInputs -> GameInputs
-evaluateMapping mapping key pressed inputs
-    | key == mapUp    mapping = inputs { inputUp    = pressed }
-    | key == mapLeft  mapping = inputs { inputLeft  = pressed }
-    | key == mapRight mapping = inputs { inputRight = pressed }
+evaluateMapping :: Key -> Bool -> KeyMapping -> GameInputs -> GameInputs
+evaluateMapping key pressed mapping inputs
+    | key == mapUp    (getKeys mapping) = inputs { inputUp    = pressed }
+    | key == mapLeft  (getKeys mapping) = inputs { inputLeft  = pressed }
+    | key == mapRight (getKeys mapping) = inputs { inputRight = pressed }
     | otherwise = inputs
 
-updateInputsWithEvent :: KeyMapping -> Event -> GameInputs -> GameInputs
-updateInputsWithEvent mapping (EventKey key dir _ _) = evaluateMapping mapping key (dir == Down)
-updateInputsWithEvent _ _ = id
+updateInputsWithEvent :: Event -> AllInputs -> AllInputs
+updateInputsWithEvent (EventKey key dir _ _) (AllInputs' inputs) = 
+    AllInputs' $ M.mapWithKey (evaluateMapping key (dir == Down)) inputs
+updateInputsWithEvent _ x = x
 
-tagInputs :: RandomGen g => Int -> GameInputs -> g -> (TaggedInputs, g)
-tagInputs frame inputs inRNG = (TaggedInputs' inputs uuid frame, newRNG)
-  where (uuid, newRNG) = random inRNG
+readGameInputs :: AllInputs -> KeyMapping -> Int -> GameInputs
+readGameInputs (AllInputs' allInp) mapping frame = (allInp M.! mapping) { inputFrame = frame }
