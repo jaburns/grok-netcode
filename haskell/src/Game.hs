@@ -6,7 +6,7 @@ module Game(
   , renderClientGame, renderServerGame
   , gameFrame
   , addPlayerToGame
-  , stepServerGame
+  , stepServerGame, predictClientGame
 ) where
 
 
@@ -77,7 +77,7 @@ stepServerGame inputs historicalGames = stepGame (head historicalGames)
           }
 
 predictClientGame :: PlayerID -> [GameInputs] -> Game -> Game
-predictClientGame pid inputHistory serverGame = undefined
+predictClientGame _ _ = id
 
 renderServerGame :: Game -> Picture
 renderServerGame (Game' _ ships) = pictures $ (rectangleWire 1 1) : map drawShip ships

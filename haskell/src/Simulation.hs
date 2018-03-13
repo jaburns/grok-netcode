@@ -15,7 +15,8 @@ import System.Random
 
 import Network (Network, newNetwork, updateNetwork, clientReceivePackets, clientSendPackets, 
     serverReceivePackets, serverSendPackets, clearPacketQueues)
-import Game (Game, PlayerID, newGame, gameFrame, renderClientGame, renderServerGame, addPlayerToGame, stepServerGame)
+import Game (Game, PlayerID, newGame, gameFrame, renderClientGame, renderServerGame, addPlayerToGame, 
+    stepServerGame, predictClientGame)
 import Input (GameInputs, AllInputs, KeyMapping(..), newInputs, updateInputsWithEvent, readGameInputs)
 import Palette(oneColor, fgColor, twoColor)
 
@@ -85,11 +86,18 @@ readInputsForClients allInputs clients = runState getInputs
     getInputs = mapM getInput clients
     getInput client = state $ readGameInputs allInputs (clientKeyMapping client)
 
-
 updateClient :: [ServerPacket] -> GameInputs -> Client -> ([ClientPacket], Client)
-updateClient []       inputs client = ([(clientPlayerID client, inputs)], client)
-updateClient (game:_) inputs client = ([(clientPlayerID client, inputs)], client { clientGame = latestGame game (clientGame client) })
-  where latestGame new old = if gameFrame new >= gameFrame old then new else old
+updateClient serverGames inputs client = ([(clientPlayerID client, inputs)], newClient)
+  where
+    newClient = client 
+      { clientGame = predictClientGame (clientPlayerID client) newInputs' newGame'
+      , clientInputHistory = newInputs'
+      }
+    newInputs' = inputs : clientInputHistory client
+    newGame' = case serverGames of 
+                 (game:_) -> latestGame game (clientGame client)
+                 []       -> clientGame client
+    latestGame new old = if gameFrame new >= gameFrame old then new else old
 
 
 updateServerInSimulation :: Simulation -> Simulation
