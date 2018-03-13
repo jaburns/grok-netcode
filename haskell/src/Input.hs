@@ -8,12 +8,14 @@ module Input(
   , readGameInputs
 ) where
 
+
 import Graphics.Gloss.Interface.Pure.Game
 import qualified Data.Map.Strict as M
 
+
 newtype AllInputs = AllInputs' (M.Map KeyMapping GameInputs)
 
-data GameInputs = GameInputs' -- TODO rename to PlayerInputs
+data GameInputs = GameInputs'
   { inputUp    :: Bool
   , inputLeft  :: Bool
   , inputRight :: Bool
@@ -28,6 +30,7 @@ data KeyMappingKeys = KeyMappingKeys'
   , mapLeft  :: Key
   , mapRight :: Key
   }
+
 
 newInputs :: AllInputs
 newInputs = AllInputs' $ M.fromList [(WASD, newGameInputs), (Arrows, newGameInputs)]

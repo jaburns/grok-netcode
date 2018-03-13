@@ -2,8 +2,10 @@ module Palette (
     bgColor, fgColor, oneColor, twoColor
 ) where
 
+
 import Numeric(readHex)
 import Graphics.Gloss.Interface.Pure.Game
+
 
 hexColor :: String -> Color
 hexColor (a:b:c:d:e:f:_) = makeColorI (get [a,b]) (get [c,d]) (get [e,f]) 255

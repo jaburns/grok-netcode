@@ -3,11 +3,12 @@ module Game(
   , PlayerID
   , Ship
   , newGame
-  , renderGame
-  , gameTime
+  , renderClientGame, renderServerGame
+  , gameFrame
   , addPlayerToGame
   , stepServerGame
 ) where
+
 
 import Control.Monad
 import Control.Monad.Trans.State
@@ -17,20 +18,23 @@ import Graphics.Gloss
 import System.Random
 
 import Input (GameInputs, inputLeft, inputRight, inputUp)
-import Palette (oneColor, twoColor)
+import Palette (oneColor, twoColor, fgColor)
+
 
 type PlayerID = UUID
 
 data Ship = Ship'
   { shipID    :: PlayerID
+  , shipColor :: Color
   , shipPos   :: Point
   , shipAngle :: Float
   }
 
 data Game = Game'
-  { gameTime  :: Int
+  { gameFrame :: Int
   , gameShips :: [Ship]
   }
+
 
 speed :: Float
 speed = 2.5 / 350
@@ -42,7 +46,7 @@ newGame :: Game
 newGame = Game' 0 []
 
 updateShip :: GameInputs -> Ship -> Ship
-updateShip inputs (Ship' id (x,y) angle) = Ship' id newPos newAngle 
+updateShip inputs (Ship' pid col (x,y) angle) = Ship' pid col newPos newAngle 
   where
     newAngle = angle + 0.05 * turn
     turn | inputLeft  inputs =  1
@@ -60,14 +64,15 @@ stepShips inputs = map stepShip
 addPlayerToGame :: RandomGen g => g -> Game -> (PlayerID, Game, g)
 addPlayerToGame rng game = (newID, game { gameShips = newShip : (gameShips game) }, newRNG')
   where
-    newShip = Ship' newID (a - 0.5, b - 0.5) (2 * pi * c)
+    newShip = Ship' newID col (a - 0.5, b - 0.5) (2 * pi * c)
     (a:b:c:[], newRNG) = runState (replicateM 3 (state random)) rng
     (newID, newRNG') = random newRNG
+    col = if length (gameShips game) `mod` 2 == 0 then oneColor else twoColor
 
 stepServerGame :: M.Map PlayerID GameInputs -> [Game] -> Game
 stepServerGame inputs historicalGames = stepGame (head historicalGames)
   where stepGame game = game 
-          { gameTime = (gameTime game) + 1
+          { gameFrame = (gameFrame game) + 1
           , gameShips = stepShips inputs (gameShips game)
           }
 
@@ -75,11 +80,17 @@ stepClientPredictedGame :: PlayerID -> GameInputs -> Game -> Game
 stepClientPredictedGame pid inputs game = undefined
 
 
-renderGame :: Game -> Picture
-renderGame (Game' _ ships) = pictures $ (rectangleWire 1 1) : zipWith drawShip [oneColor, twoColor] ships
+renderServerGame :: Game -> Picture
+renderServerGame (Game' _ ships) = pictures $ (rectangleWire 1 1) : map drawShip ships
 
-drawShip :: Color -> Ship -> Picture
-drawShip c (Ship' _ (x,y) angle) = color c . translate x y $ rotate (-angle * 180 / pi) $ lineLoop [ 
+renderClientGame :: PlayerID -> Game -> Picture
+renderClientGame pid (Game' _ ships) = pictures $ (color playerColor $ rectangleWire 1 1) : map drawShip ships
+  where playerColor = case (M.fromList $ map (\s -> (shipID s, shipColor s)) ships) M.!? pid of
+                        Just c -> c
+                        Nothing -> fgColor
+
+drawShip :: Ship -> Picture
+drawShip (Ship' _ c (x,y) angle) = color c . translate x y $ rotate (-angle * 180 / pi) $ lineLoop [ 
     (-0.707 * shipRadius, -0.707 * shipRadius)
   , (shipRadius, 0)
   , (-0.707 * shipRadius,  0.707 * shipRadius)

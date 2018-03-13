@@ -7,9 +7,11 @@ module Network(
   , clearPacketQueues
 ) where
 
+
 import Control.Monad.Trans.State
 import Data.Maybe
 import System.Random
+
 
 type InTransit a = (Float, a)
 
@@ -22,6 +24,7 @@ data Network client server = Network'
   , netClientReadyPayloads :: [client]
   , netServerReadyPayloads :: [server]
   }
+
 
 newNetwork :: StdGen -> Network a b
 newNetwork rng = Network' rng (0.05, 0.025) 0 [] [] [] []
@@ -45,6 +48,7 @@ movePacketsToReady (Network' rng lat loss as bs outAs outBs) =
     remaining = filter ((> 0) . fst)
     ready = map snd . filter ((<= 0) . fst)
 
+
 clientSendPackets :: [a] -> Network a b -> Network a b
 clientSendPackets payloads = execState $ do
     maybeNewPackets <- mapM maybeBuildPacket payloads
@@ -53,6 +57,7 @@ clientSendPackets payloads = execState $ do
 
 clientReceivePackets :: Network a b -> [b]
 clientReceivePackets = netServerReadyPayloads
+
 
 serverSendPackets :: [b] -> Network a b -> Network a b
 serverSendPackets payload = execState $ do
@@ -63,11 +68,11 @@ serverSendPackets payload = execState $ do
 serverReceivePackets :: Network a b -> [a]
 serverReceivePackets = netClientReadyPayloads
 
+
 clearPacketQueues :: Network a b -> Network a b
 clearPacketQueues net = net { netClientReadyPayloads = [], netServerReadyPayloads = [] }
  
--- TODO use StateT Maybe monad transformer
-maybeBuildPacket :: p -> State (Network a b) (Maybe (InTransit p))
+maybeBuildPacket :: p -> State (Network a b) (Maybe (InTransit p)) -- TODO use StateT Maybe monad transformer
 maybeBuildPacket payload = do
     net <- get
     let (rand0, rng0) = random $ netRNG net

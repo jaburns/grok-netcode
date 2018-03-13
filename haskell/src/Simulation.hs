@@ -6,6 +6,7 @@ module Simulation(
   , renderSim
 ) where
 
+
 import Control.Monad
 import Control.Monad.Trans.State
 import qualified Data.Map.Strict as M
@@ -14,7 +15,7 @@ import System.Random
 
 import Network (Network, newNetwork, updateNetwork, clientReceivePackets, clientSendPackets, 
     serverReceivePackets, serverSendPackets, clearPacketQueues)
-import Game (Game, PlayerID, newGame, gameTime, renderGame, addPlayerToGame, stepServerGame)
+import Game (Game, PlayerID, newGame, gameFrame, renderClientGame, renderServerGame, addPlayerToGame, stepServerGame)
 import Input (GameInputs, AllInputs, KeyMapping(..), newInputs, updateInputsWithEvent, readGameInputs)
 import Palette(oneColor, fgColor, twoColor)
 
@@ -74,7 +75,7 @@ updateClientsInSimulation sim = sim
   }
   where
     packets = clientReceivePackets (simNetwork sim)
-    clientInputs = readInputsForClients (simInputs sim) (gameTime . head . serverGameHistory . simServer $ sim) (simClients sim)
+    clientInputs = readInputsForClients (simInputs sim) (gameFrame . head . serverGameHistory . simServer $ sim) (simClients sim)
     newClientsWithPackets = zipWith (updateClient packets) clientInputs (simClients sim)
 
 readInputsForClients :: AllInputs -> Int -> [Client] -> [GameInputs]
@@ -84,7 +85,7 @@ readInputsForClients allInputs frame = map build
 updateClient :: [ServerPacket] -> GameInputs -> Client -> ([ClientPacket], Client)
 updateClient []       inputs client = ([(clientPlayerID client, inputs)], client)
 updateClient (game:_) inputs client = ([(clientPlayerID client, inputs)], client { clientGame = latestGame game (clientGame client) })
-  where latestGame new old = if gameTime new >= gameTime old then new else old
+  where latestGame new old = if gameFrame new >= gameFrame old then new else old
 
 
 updateServerInSimulation :: Simulation -> Simulation
@@ -110,7 +111,7 @@ renderSim :: Simulation -> Picture
 renderSim sim = pictures [title, server sim, clients sim]
   where
     server = renderServer . head . serverGameHistory . simServer
-    clients = pictures . zipWith renderClient [0,1..] . map clientGame . simClients
+    clients = pictures . zipWith3 renderClient [0,1..] (map clientPlayerID (simClients sim)) . map clientGame . simClients
 
 viewBoxSize :: Float
 viewBoxSize = 350
@@ -119,10 +120,10 @@ viewBoxPadding :: Float
 viewBoxPadding = 10
 
 renderServer :: Game -> Picture
-renderServer = scale viewBoxSize viewBoxSize . renderGame
+renderServer = scale viewBoxSize viewBoxSize . renderServerGame
 
-renderClient :: Int -> Game -> Picture
-renderClient i = color col . translate xOffset 0 . scale viewBoxSize viewBoxSize . renderGame
-  where (col, xOffset) | i == 0 = (oneColor, -viewBoxSize - viewBoxPadding)
-                       | i == 1 = (twoColor,  viewBoxSize + viewBoxPadding)
-                       | otherwise = undefined
+renderClient :: Int -> PlayerID -> Game -> Picture
+renderClient i pid = translate xOffset 0 . scale viewBoxSize viewBoxSize . renderClientGame pid
+  where xOffset | i == 0 = -viewBoxSize - viewBoxPadding
+                | i == 1 =  viewBoxSize + viewBoxPadding
+                | otherwise = undefined
