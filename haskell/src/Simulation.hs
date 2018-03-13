@@ -71,16 +71,20 @@ updateSim dt = execState $ do
 updateClientsInSimulation :: Simulation -> Simulation
 updateClientsInSimulation sim = sim
   { simClients = map snd newClientsWithPackets 
+  , simRandom = rng'
   , simNetwork = clientSendPackets (concat . map fst $ newClientsWithPackets) (simNetwork sim)
   }
   where
     packets = clientReceivePackets (simNetwork sim)
-    clientInputs = readInputsForClients (simInputs sim) (gameFrame . head . serverGameHistory . simServer $ sim) (simClients sim)
+    (clientInputs, rng') = readInputsForClients (simInputs sim) (simClients sim) (simRandom sim)
     newClientsWithPackets = zipWith (updateClient packets) clientInputs (simClients sim)
 
-readInputsForClients :: AllInputs -> Int -> [Client] -> [GameInputs]
-readInputsForClients allInputs frame = map build
-  where build client = readGameInputs allInputs (clientKeyMapping client) frame
+readInputsForClients :: AllInputs -> [Client] -> StdGen -> ([GameInputs], StdGen)
+readInputsForClients allInputs clients = runState getInputs
+  where
+    getInputs = mapM getInput clients
+    getInput client = state $ readGameInputs allInputs (clientKeyMapping client)
+
 
 updateClient :: [ServerPacket] -> GameInputs -> Client -> ([ClientPacket], Client)
 updateClient []       inputs client = ([(clientPlayerID client, inputs)], client)

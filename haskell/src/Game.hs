@@ -76,9 +76,8 @@ stepServerGame inputs historicalGames = stepGame (head historicalGames)
           , gameShips = stepShips inputs (gameShips game)
           }
 
-stepClientPredictedGame :: PlayerID -> GameInputs -> Game -> Game
-stepClientPredictedGame pid inputs game = undefined
-
+predictClientGame :: PlayerID -> [GameInputs] -> Game -> Game
+predictClientGame pid inputHistory serverGame = undefined
 
 renderServerGame :: Game -> Picture
 renderServerGame (Game' _ ships) = pictures $ (rectangleWire 1 1) : map drawShip ships
