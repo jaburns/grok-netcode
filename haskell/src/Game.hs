@@ -12,7 +12,9 @@ module Game(
 
 import Control.Monad
 import Control.Monad.Trans.State
+import Data.List
 import qualified Data.Map.Strict as M
+import qualified Data.Map.Merge.Strict as M
 import Data.Maybe
 import Data.UUID(UUID)
 import Graphics.Gloss
@@ -46,8 +48,8 @@ shipRadius = 15 / 350
 newGame :: Game
 newGame = Game' 0 M.empty
 
-updateShip :: GameInputs -> Ship -> Ship
-updateShip inputs (Ship' _ col (x,y) angle) = Ship' (inputID inputs) col newPos newAngle 
+stepShip :: GameInputs -> Ship -> Ship
+stepShip inputs (Ship' _ col (x,y) angle) = Ship' (inputID inputs) col newPos newAngle 
   where
     newAngle = angle + 0.05 * turn
     turn | inputLeft  inputs =  1
@@ -56,9 +58,10 @@ updateShip inputs (Ship' _ col (x,y) angle) = Ship' (inputID inputs) col newPos 
     newPos | inputUp inputs = (x + speed * cos newAngle, y + speed * sin newAngle)
            | otherwise      = (x, y)
 
--- TODO A missing input will delete a ship from the map, dont use intersectionWith
 stepShips :: M.Map PlayerID GameInputs -> M.Map PlayerID Ship -> M.Map PlayerID Ship
-stepShips = M.intersectionWith updateShip
+stepShips = M.merge (M.dropMissing) (M.preserveMissing) (M.zipWithMaybeMatched f)
+  where f _ a b = Just $ stepShip a b
+
 
 addPlayerToGame :: RandomGen g => g -> Game -> (PlayerID, Game, g)
 addPlayerToGame rng game = (newID, game { gameShips = M.insert newID newShip (gameShips game) }, newRNG')
@@ -76,14 +79,14 @@ stepServerGame inputs historicalGames = stepGame (head historicalGames)
           }
 
 predictClientGame :: PlayerID -> [GameInputs] -> Game -> Game
-predictClientGame pid inputs game = game -- undefined
-  -- where
-  --   matchInput input = inputID input == (
-  --   index = fromMaybe -1 $ findIndex matchInput inputs
-
+predictClientGame pid inputs game = fromMaybe game $ do
+    ship <- (gameShips game) M.!? pid
+    index <- findIndex ((== shipLatestInputID ship) . inputID) inputs
+    let predictedShip = foldr stepShip ship (take index inputs)
+    return $ game { gameShips = M.adjust (const predictedShip) pid (gameShips game) }
 
 renderServerGame :: Game -> Picture
-renderServerGame (Game' _ ships) = pictures $ (rectangleWire 1 1) : (map drawShip . M.elems $ ships)
+renderServerGame (Game' _ ships) = pictures $ (color fgColor $ rectangleWire 1 1) : (map drawShip . M.elems $ ships)
 
 renderClientGame :: PlayerID -> Game -> Picture
 renderClientGame pid (Game' _ ships) = pictures $ (color playerColor $ rectangleWire 1 1) : map drawShip (M.elems ships)

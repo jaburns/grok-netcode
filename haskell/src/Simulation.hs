@@ -117,7 +117,7 @@ updateServer inputPackets server = ([head . serverGameHistory $ newServer], newS
 
 
 title :: Picture
-title = scale 0.1 0.1 . color fgColor . text $ "Hello World"
+title = scale 0.1 0.1 . color fgColor . text $ ""
 
 renderSim :: Simulation -> Picture
 renderSim sim = pictures [title, server sim, clients sim]
