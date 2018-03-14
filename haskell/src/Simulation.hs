@@ -10,6 +10,7 @@ module Simulation(
 import Control.Monad
 import Control.Monad.Trans.State
 import qualified Data.Map.Strict as M
+import qualified Data.Map.Merge.Strict as M
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
@@ -112,8 +113,24 @@ updateServerInSimulation sim = sim
 updateServer :: [ClientPacket] -> Server -> ([ServerPacket], Server)
 updateServer inputPackets server = ([head . serverGameHistory $ newServer], newServer)
   where 
-    newServer = server { serverGameHistory = [newServerGame] }
-    newServerGame = stepServerGame (M.fromList inputPackets) (serverGameHistory server)
+    updatedInputBuffers = M.merge (M.dropMissing) (M.preserveMissing) (M.zipWithMaybeMatched updateBuffer) 
+                                  (mapifyInputPackets inputPackets) (serverInputBuffers server)
+    newServer = server 
+      { serverGameHistory = take 60 $ newServerGame : (serverGameHistory server) 
+      , serverInputBuffers = updatedInputBuffers
+      }
+    newServerGame = stepServerGame (getLatestInputs updatedInputBuffers) (serverGameHistory server)
+
+mapifyInputPackets :: [(PlayerID, GameInputs)] -> M.Map PlayerID [GameInputs]
+mapifyInputPackets = undefined
+
+updateBuffer :: PlayerID -> [GameInputs] -> [GameInputs] -> Maybe [GameInputs]
+updateBuffer _ a b = Just $ b ++ a 
+
+getLatestInputs :: M.Map PlayerID [GameInputs] -> M.Map PlayerID GameInputs
+getLatestInputs = undefined
+
+
 
 
 title :: Picture
