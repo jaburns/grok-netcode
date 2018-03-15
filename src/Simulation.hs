@@ -19,7 +19,6 @@ import Game (Game, PlayerID, newGame, gameFrame, renderClientGame, renderServerG
     stepServerGame, predictClientGame)
 import Input (PlayerInput, AllInputs, KeyMapping(..), newInputs, emptyPlayerInput, updateInputsWithEvent, 
     readPlayerInput)
-import Palette (fgColor)
 
 
 type ServerPacket = Game
@@ -186,10 +185,13 @@ viewBoxPadding = 10
 
 renderSim :: Simulation -> Picture
 renderSim sim = 
-    pictures [server sim, clients sim]
+    pictures $ server : clients
   where
-    server = renderServer . head . serverGameHistory . simServer
-    clients = pictures . zipWith3 renderClient [0,1..] (map clientPlayerID (simClients sim)) . map clientGame . simClients
+    server = renderServer . head . serverGameHistory . simServer $ sim
+    clients = 
+        zipWith3 renderClient [0,1..] (map clientPlayerID (simClients sim)) 
+        $ map clientGame 
+        $ simClients sim
 
 
 renderServer :: Game -> Picture
