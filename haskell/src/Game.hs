@@ -59,7 +59,7 @@ stepShip inputs (Ship' _ col (x,y) angle) = Ship' (inputID inputs) col newPos ne
            | otherwise      = (x, y)
 
 stepShips :: M.Map PlayerID PlayerInput -> M.Map PlayerID Ship -> M.Map PlayerID Ship
-stepShips = M.merge (M.dropMissing) (M.preserveMissing) (M.zipWithMaybeMatched f)
+stepShips = M.merge M.dropMissing M.preserveMissing (M.zipWithMaybeMatched f)
   where f _ a b = Just $ stepShip a b
 
 

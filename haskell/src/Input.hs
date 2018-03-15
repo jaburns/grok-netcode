@@ -3,7 +3,7 @@ module Input(
   , PlayerInput
   , InputID 
   , KeyMapping(..)
-  , newInputs
+  , newInputs, emptyPlayerInput
   , inputUp, inputLeft, inputRight, inputID
   , updateInputsWithEvent
   , readPlayerInput
@@ -17,30 +17,36 @@ import System.Random
 
 
 type InputID = UUID
+
 newtype AllInputs = AllInputs' (M.Map KeyMapping PlayerInput)
 
-data PlayerInput = PlayerInput'
-  { inputID    :: InputID
-  , inputUp    :: Bool
-  , inputLeft  :: Bool
-  , inputRight :: Bool
-  }
+data PlayerInput = 
+  PlayerInput'
+    { inputID    :: InputID
+    , inputUp    :: Bool
+    , inputLeft  :: Bool
+    , inputRight :: Bool
+    }
+  deriving (Show)
 
-data KeyMapping = WASD | Arrows
-  deriving (Eq, Ord)
+data KeyMapping 
+    = WASD 
+    | Arrows
+  deriving (Show, Eq, Ord)
 
-data KeyMappingKeys = KeyMappingKeys'
-  { mapUp    :: Key
-  , mapLeft  :: Key
-  , mapRight :: Key
-  }
+data KeyMappingKeys = 
+  KeyMappingKeys'
+    { mapUp    :: Key
+    , mapLeft  :: Key
+    , mapRight :: Key
+    }
 
 
 newInputs :: AllInputs
-newInputs = AllInputs' $ M.fromList [(WASD, newPlayerInput), (Arrows, newPlayerInput)]
+newInputs = AllInputs' $ M.fromList [(WASD, emptyPlayerInput), (Arrows, emptyPlayerInput)]
 
-newPlayerInput :: PlayerInput
-newPlayerInput = PlayerInput' nil False False False
+emptyPlayerInput :: PlayerInput
+emptyPlayerInput = PlayerInput' nil False False False
 
 getKeys :: KeyMapping -> KeyMappingKeys
 getKeys WASD = KeyMappingKeys' (Char 'w') (Char 'a') (Char 'd')
