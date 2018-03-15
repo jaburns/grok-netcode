@@ -20,7 +20,7 @@ import Data.UUID(UUID)
 import Graphics.Gloss
 import System.Random
 
-import Input (GameInputs, InputID, inputLeft, inputRight, inputUp, inputID)
+import Input (PlayerInput, InputID, inputLeft, inputRight, inputUp, inputID)
 import Palette (oneColor, twoColor, fgColor)
 
 
@@ -48,7 +48,7 @@ shipRadius = 15 / 350
 newGame :: Game
 newGame = Game' 0 M.empty
 
-stepShip :: GameInputs -> Ship -> Ship
+stepShip :: PlayerInput -> Ship -> Ship
 stepShip inputs (Ship' _ col (x,y) angle) = Ship' (inputID inputs) col newPos newAngle 
   where
     newAngle = angle + 0.05 * turn
@@ -58,7 +58,7 @@ stepShip inputs (Ship' _ col (x,y) angle) = Ship' (inputID inputs) col newPos ne
     newPos | inputUp inputs = (x + speed * cos newAngle, y + speed * sin newAngle)
            | otherwise      = (x, y)
 
-stepShips :: M.Map PlayerID GameInputs -> M.Map PlayerID Ship -> M.Map PlayerID Ship
+stepShips :: M.Map PlayerID PlayerInput -> M.Map PlayerID Ship -> M.Map PlayerID Ship
 stepShips = M.merge (M.dropMissing) (M.preserveMissing) (M.zipWithMaybeMatched f)
   where f _ a b = Just $ stepShip a b
 
@@ -71,14 +71,14 @@ addPlayerToGame rng game = (newID, game { gameShips = M.insert newID newShip (ga
     (newID, newRNG') = random newRNG
     col = if length (gameShips game) `mod` 2 == 0 then oneColor else twoColor
 
-stepServerGame :: M.Map PlayerID GameInputs -> [Game] -> Game
+stepServerGame :: M.Map PlayerID PlayerInput -> [Game] -> Game
 stepServerGame inputs historicalGames = stepGame (head historicalGames)
   where stepGame game = game 
           { gameFrame = (gameFrame game) + 1
           , gameShips = stepShips inputs (gameShips game)
           }
 
-predictClientGame :: PlayerID -> [GameInputs] -> Game -> Game
+predictClientGame :: PlayerID -> [PlayerInput] -> Game -> Game
 predictClientGame pid inputs game = fromMaybe game $ do
     ship <- (gameShips game) M.!? pid
     index <- findIndex ((== shipLatestInputID ship) . inputID) inputs

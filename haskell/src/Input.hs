@@ -1,12 +1,12 @@
 module Input(
     AllInputs
-  , GameInputs
+  , PlayerInput
   , InputID 
   , KeyMapping(..)
   , newInputs
   , inputUp, inputLeft, inputRight, inputID
   , updateInputsWithEvent
-  , readGameInputs
+  , readPlayerInput
 ) where
 
 
@@ -17,9 +17,9 @@ import System.Random
 
 
 type InputID = UUID
-newtype AllInputs = AllInputs' (M.Map KeyMapping GameInputs)
+newtype AllInputs = AllInputs' (M.Map KeyMapping PlayerInput)
 
-data GameInputs = GameInputs'
+data PlayerInput = PlayerInput'
   { inputID    :: InputID
   , inputUp    :: Bool
   , inputLeft  :: Bool
@@ -37,16 +37,16 @@ data KeyMappingKeys = KeyMappingKeys'
 
 
 newInputs :: AllInputs
-newInputs = AllInputs' $ M.fromList [(WASD, newGameInputs), (Arrows, newGameInputs)]
+newInputs = AllInputs' $ M.fromList [(WASD, newPlayerInput), (Arrows, newPlayerInput)]
 
-newGameInputs :: GameInputs
-newGameInputs = GameInputs' nil False False False
+newPlayerInput :: PlayerInput
+newPlayerInput = PlayerInput' nil False False False
 
 getKeys :: KeyMapping -> KeyMappingKeys
 getKeys WASD = KeyMappingKeys' (Char 'w') (Char 'a') (Char 'd')
 getKeys Arrows = KeyMappingKeys' (SpecialKey KeyUp) (SpecialKey KeyLeft) (SpecialKey KeyRight)
 
-evaluateMapping :: Key -> Bool -> KeyMapping -> GameInputs -> GameInputs
+evaluateMapping :: Key -> Bool -> KeyMapping -> PlayerInput -> PlayerInput
 evaluateMapping key pressed mapping inputs
     | key == mapUp    (getKeys mapping) = inputs { inputUp    = pressed }
     | key == mapLeft  (getKeys mapping) = inputs { inputLeft  = pressed }
@@ -58,8 +58,8 @@ updateInputsWithEvent (EventKey key dir _ _) (AllInputs' inputs) =
     AllInputs' $ M.mapWithKey (evaluateMapping key (dir == Down)) inputs
 updateInputsWithEvent _ x = x
 
-readGameInputs :: RandomGen g => AllInputs -> KeyMapping -> g -> (GameInputs, g)
-readGameInputs (AllInputs' allInp) mapping rng = (result, rng')
+readPlayerInput :: RandomGen g => AllInputs -> KeyMapping -> g -> (PlayerInput, g)
+readPlayerInput (AllInputs' allInp) mapping rng = (result, rng')
   where 
     result = (allInp M.! mapping) { inputID = resultID }
     (resultID, rng') = random rng

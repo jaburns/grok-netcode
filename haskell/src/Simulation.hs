@@ -9,6 +9,7 @@ module Simulation(
 
 import Control.Monad
 import Control.Monad.Trans.State
+import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Map.Merge.Strict as M
 import Graphics.Gloss.Interface.Pure.Game
@@ -18,12 +19,12 @@ import Network (Network, newNetwork, updateNetwork, clientReceivePackets, client
     serverReceivePackets, serverSendPackets, clearPacketQueues)
 import Game (Game, PlayerID, newGame, gameFrame, renderClientGame, renderServerGame, addPlayerToGame, 
     stepServerGame, predictClientGame)
-import Input (GameInputs, AllInputs, KeyMapping(..), newInputs, updateInputsWithEvent, readGameInputs)
+import Input (PlayerInput, AllInputs, KeyMapping(..), newInputs, updateInputsWithEvent, readPlayerInput)
 import Palette(oneColor, fgColor, twoColor)
 
 
 type ServerPacket = Game
-type ClientPacket = (PlayerID, GameInputs)
+type ClientPacket = (PlayerID, PlayerInput)
 
 type SimNetwork = Network ClientPacket ServerPacket
 
@@ -38,13 +39,13 @@ data Simulation = Simulation'
 data Client = Client'
   { clientPlayerID     :: PlayerID
   , clientKeyMapping   :: KeyMapping
-  , clientInputHistory :: [GameInputs]
+  , clientInputHistory :: [PlayerInput]
   , clientGame         :: Game
   }
 
 data Server = Server'
   { serverGameHistory  :: [Game]
-  , serverInputBuffers :: M.Map PlayerID [GameInputs]
+  , serverInputBuffers :: M.Map PlayerID [PlayerInput]
   }
 
 
@@ -81,13 +82,13 @@ updateClientsInSimulation sim = sim
     (clientInputs, rng') = readInputsForClients (simInputs sim) (simClients sim) (simRandom sim)
     newClientsWithPackets = zipWith (updateClient packets) clientInputs (simClients sim)
 
-readInputsForClients :: AllInputs -> [Client] -> StdGen -> ([GameInputs], StdGen)
+readInputsForClients :: AllInputs -> [Client] -> StdGen -> ([PlayerInput], StdGen)
 readInputsForClients allInputs clients = runState getInputs
   where
     getInputs = mapM getInput clients
-    getInput client = state $ readGameInputs allInputs (clientKeyMapping client)
+    getInput client = state $ readPlayerInput allInputs (clientKeyMapping client)
 
-updateClient :: [ServerPacket] -> GameInputs -> Client -> ([ClientPacket], Client)
+updateClient :: [ServerPacket] -> PlayerInput -> Client -> ([ClientPacket], Client)
 updateClient serverGames inputs client = ([(clientPlayerID client, inputs)], newClient)
   where
     newClient = client 
@@ -117,18 +118,26 @@ updateServer inputPackets server = ([head . serverGameHistory $ newServer], newS
                                   (mapifyInputPackets inputPackets) (serverInputBuffers server)
     newServer = server 
       { serverGameHistory = take 60 $ newServerGame : (serverGameHistory server) 
-      , serverInputBuffers = updatedInputBuffers
+      , serverInputBuffers = scrapedInputBuffers
       }
-    newServerGame = stepServerGame (getLatestInputs updatedInputBuffers) (serverGameHistory server)
+    (latestInputs, scrapedInputBuffers) = scrapeInputBuffers updatedInputBuffers
+    newServerGame = stepServerGame latestInputs (serverGameHistory server)
 
-mapifyInputPackets :: [(PlayerID, GameInputs)] -> M.Map PlayerID [GameInputs]
-mapifyInputPackets = undefined
+mapifyInputPackets :: [(PlayerID, PlayerInput)] -> M.Map PlayerID [PlayerInput]
+mapifyInputPackets = 
+  let
+    buildMap accumMap (pid, inputs) = M.alter f pid accumMap
+      where
+        f (Just xs) = Just $  inputs : xs
+        f  Nothing  = Just $ [inputs]
+  in 
+  foldl' buildMap M.empty
 
-updateBuffer :: PlayerID -> [GameInputs] -> [GameInputs] -> Maybe [GameInputs]
+updateBuffer :: PlayerID -> [PlayerInput] -> [PlayerInput] -> Maybe [PlayerInput]
 updateBuffer _ a b = Just $ b ++ a 
 
-getLatestInputs :: M.Map PlayerID [GameInputs] -> M.Map PlayerID GameInputs
-getLatestInputs = undefined
+scrapeInputBuffers :: M.Map PlayerID [PlayerInput] -> (M.Map PlayerID PlayerInput, M.Map PlayerID [PlayerInput])
+scrapeInputBuffers = undefined
 
 
 
