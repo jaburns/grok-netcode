@@ -177,23 +177,19 @@ scrapeInputBuffers buffers =
     removeFirstUnlessLast      rest  = rest
   
 
-title :: Picture
-title = scale 0.1 0.1 . color fgColor . text $ ""
-
-
-renderSim :: Simulation -> Picture
-renderSim sim = 
-    pictures [title, server sim, clients sim]
-  where
-    server = renderServer . head . serverGameHistory . simServer
-    clients = pictures . zipWith3 renderClient [0,1..] (map clientPlayerID (simClients sim)) . map clientGame . simClients
-
-
 viewBoxSize :: Float
 viewBoxSize = 350
 
 viewBoxPadding :: Float
 viewBoxPadding = 10
+
+
+renderSim :: Simulation -> Picture
+renderSim sim = 
+    pictures [server sim, clients sim]
+  where
+    server = renderServer . head . serverGameHistory . simServer
+    clients = pictures . zipWith3 renderClient [0,1..] (map clientPlayerID (simClients sim)) . map clientGame . simClients
 
 
 renderServer :: Game -> Picture

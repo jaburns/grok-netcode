@@ -103,7 +103,7 @@ predictClientGame pid inputs game = fromMaybe game $ do
     ship <- (gameShips game) M.!? pid
     index <- findIndex ((== shipLatestInputID ship) . inputID) inputs
 
-    let predictedShip = foldr stepShip ship (take index inputs)
+    let predictedShip = foldr stepShip ship $ take index inputs
 
     return $ 
         game 
@@ -111,14 +111,26 @@ predictClientGame pid inputs game = fromMaybe game $ do
         }
 
 
+renderWindow :: Color -> String -> Picture
+renderWindow winColor title = color winColor $ pictures
+    [ rectangleWire 1 1
+    , drawTitle title 
+    ]
+  where
+    drawTitle = translate (-0.5) (0.5 + 0.01)
+        . scale (0.15 / 350) (0.15 /350)
+        . color winColor 
+        . text 
+
+
 renderServerGame :: Game -> Picture
 renderServerGame (Game' _ ships) = 
-    pictures $ (color fgColor $ rectangleWire 1 1) : (map drawShip . M.elems $ ships)
+    pictures $ (renderWindow fgColor "Server") : (map drawShip . M.elems $ ships)
 
 
 renderClientGame :: PlayerID -> Game -> Picture
 renderClientGame pid (Game' _ ships) = 
-    pictures $ (color playerColor $ rectangleWire 1 1) : map drawShip (M.elems ships)
+    pictures $ (renderWindow playerColor "Client") : map drawShip (M.elems ships)
   where 
     playerColor = fromMaybe fgColor $ do 
         ship <- ships M.!? pid
