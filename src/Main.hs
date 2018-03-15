@@ -11,7 +11,7 @@ import Palette(bgColor)
 
 
 window :: Display
-window = InWindow "Grok Netcode" (1280, 720) (10, 10)
+window = InWindow "Grok Netcode" (1280, 720) (50, 50)
 
 main :: IO ()
 main = do

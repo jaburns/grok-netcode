@@ -8,9 +8,11 @@ import Graphics.Gloss.Interface.Pure.Game
 
 
 hexColor :: String -> Color
-hexColor (a:b:c:d:e:f:_) = makeColorI (get [a,b]) (get [c,d]) (get [e,f]) 255
-  where get = fst . head . readHex
-hexColor _ = undefined
+hexColor (a:b:c:d:e:f:[]) = 
+    makeColorI (get [a,b]) (get [c,d]) (get [e,f]) 255
+  where 
+    get = fst . head . readHex
+
 
 bgColor :: Color
 bgColor = hexColor "252A34"

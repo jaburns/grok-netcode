@@ -29,17 +29,21 @@ data Network client server = Network'
 newNetwork :: StdGen -> Network a b
 newNetwork rng = Network' rng (0.05, 0.025) 0 [] [] [] []
 
+
 updateNetwork :: Float -> Network a b -> Network a b
 updateNetwork dt = execState $ do
     modify $ updatePackets dt
     modify movePacketsToReady
 
+
 updatePackets :: Float -> Network a b -> Network a b
-updatePackets dt net = net
-  { netServerPackets = map elapsePacket (netServerPackets net)
-  , netClientPackets = map elapsePacket (netClientPackets net) 
-  }
+updatePackets dt net = 
+    net
+    { netServerPackets = map elapsePacket (netServerPackets net)
+    , netClientPackets = map elapsePacket (netClientPackets net) 
+    }
   where elapsePacket (t, x) = (t - dt, x)
+
 
 movePacketsToReady :: Network a b -> Network a b
 movePacketsToReady (Network' rng lat loss as bs outAs outBs) =
@@ -53,7 +57,11 @@ clientSendPackets :: [a] -> Network a b -> Network a b
 clientSendPackets payloads = execState $ do
     maybeNewPackets <- mapM maybeBuildPacket payloads
     let newPackets = catMaybes maybeNewPackets
-    modify (\net -> net { netClientPackets = netClientPackets net ++ newPackets })
+    modify (\net -> 
+        net 
+        { netClientPackets = netClientPackets net ++ newPackets 
+        })
+
 
 clientReceivePackets :: Network a b -> [b]
 clientReceivePackets = netServerReadyPayloads
@@ -63,16 +71,25 @@ serverSendPackets :: [b] -> Network a b -> Network a b
 serverSendPackets payload = execState $ do
     maybeNewPackets <- mapM maybeBuildPacket payload
     let newPackets = catMaybes maybeNewPackets
-    modify (\net -> net { netServerPackets = netServerPackets net ++ newPackets })
+    modify (\net -> 
+        net 
+        { netServerPackets = netServerPackets net ++ newPackets 
+        })
+
 
 serverReceivePackets :: Network a b -> [a]
 serverReceivePackets = netClientReadyPayloads
 
 
 clearPacketQueues :: Network a b -> Network a b
-clearPacketQueues net = net { netClientReadyPayloads = [], netServerReadyPayloads = [] }
+clearPacketQueues net = 
+    net 
+    { netClientReadyPayloads = []
+    , netServerReadyPayloads = [] 
+    }
+
  
-maybeBuildPacket :: p -> State (Network a b) (Maybe (InTransit p)) -- TODO use StateT Maybe monad transformer
+maybeBuildPacket :: p -> State (Network a b) (Maybe (InTransit p))
 maybeBuildPacket payload = do
     net <- get
     let (rand0, rng0) = random $ netRNG net
