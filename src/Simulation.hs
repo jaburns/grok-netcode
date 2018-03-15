@@ -165,10 +165,8 @@ mapifyInputPackets =
   foldr buildMap M.empty
 
 
-scrapeInputBuffers 
-    :: M.Map PlayerID [PlayerInput] 
-    -> (M.Map PlayerID PlayerInput, M.Map PlayerID [PlayerInput])
-
+scrapeInputBuffers :: M.Map PlayerID [PlayerInput] 
+                   -> (M.Map PlayerID PlayerInput, M.Map PlayerID [PlayerInput])
 scrapeInputBuffers buffers = 
     (M.map getFirst buffers, M.map removeFirstUnlessLast buffers)
   where 

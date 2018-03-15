@@ -2,12 +2,12 @@ module Utils (
     randomList
   , randomPair
   , randomUnitAndList
+  , lineSegmentsIntersect
 ) where
 
 
 import Control.Monad
 import Control.Monad.Trans.State
-import Data.Maybe
 import System.Random
 
 
@@ -31,15 +31,17 @@ randomUnitAndList count rng =
     (b, rng'') = randomList count rng'
 
 
-lineSegmentIntersects 
-    :: (Float, Float) -> (Float, Float) 
-    -> (Float, Float) -> (Float, Float) 
-    -> Bool
-lineSegmentIntersects a b c d = isJust $ lineSegmentIntersection a b c d
-
-
-lineSegmentIntersection 
-    :: (Float, Float) -> (Float, Float) 
-    -> (Float, Float) -> (Float, Float) 
-    -> Maybe (Float, Float)
-lineSegmentIntersection (x00, y00) (x01, y01) (x10, y10) (x11, y11) = undefined
+lineSegmentsIntersect :: (Float, Float) -> (Float, Float) 
+                      -> (Float, Float) -> (Float, Float) -> Bool
+lineSegmentsIntersect (x00, y00) (x01, y01) (x10, y10) (x11, y11) = 
+    numa >= 0.0 && numa <= denom && numb >= 0.0 && numb <= denom
+  where 
+    denom = dy4y3*dx2x1 - dx4x3*dy2y1
+    numa  = dx4x3*dy1y3 - dy4y3*dx1x3
+    numb  = dx2x1*dy1y3 - dy2y1*dx1x3
+    dx1x3 = x00 - x10
+    dy1y3 = y00 - y10
+    dx2x1 = x01 - x00
+    dy2y1 = y01 - y00
+    dx4x3 = x11 - x10
+    dy4y3 = y11 - y10
