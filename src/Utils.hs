@@ -3,6 +3,7 @@ module Utils (
   , randomPair
   , randomUnitAndList
   , lineSegmentsIntersect
+  , clamp
 ) where
 
 
@@ -31,10 +32,13 @@ randomUnitAndList count rng =
     (b, rng'') = randomList count rng'
 
 
-lineSegmentsIntersect :: (Float, Float) -> (Float, Float) 
-                      -> (Float, Float) -> (Float, Float) -> Bool
+clamp :: Ord a => a -> a -> a -> a
+clamp mini maxi x = if x < mini then mini else if x > maxi then maxi else x
+
+
+lineSegmentsIntersect :: (Num a, Ord a) => (a, a) -> (a, a) -> (a, a) -> (a, a) -> Bool
 lineSegmentsIntersect (x00, y00) (x01, y01) (x10, y10) (x11, y11) = 
-    numa >= 0.0 && numa <= denom && numb >= 0.0 && numb <= denom
+    numa >= 0 && numa <= denom && numb >= 0 && numb <= denom
   where 
     denom = dy4y3*dx2x1 - dx4x3*dy2y1
     numa  = dx4x3*dy1y3 - dy4y3*dx1x3

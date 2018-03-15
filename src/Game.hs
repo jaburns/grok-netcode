@@ -22,7 +22,7 @@ import System.Random
 
 import Input (PlayerInput, InputID, inputLeft, inputRight, inputUp, inputID)
 import Palette (oneColor, twoColor, fgColor)
-import Utils (randomUnitAndList)
+import Utils (randomUnitAndList, clamp)
 
 
 type PlayerID = UUID
@@ -51,7 +51,7 @@ newGame = Game' 0 M.empty
 
 
 stepShip :: PlayerInput -> Ship -> Ship
-stepShip inputs (Ship' _ col (x,y) angle) = 
+stepShip inputs (Ship' _ col (x, y) angle) = 
     Ship' (inputID inputs) col pos' angle' 
   where
     angle' = angle + 0.05 * turn
@@ -60,8 +60,10 @@ stepShip inputs (Ship' _ col (x,y) angle) =
          | inputRight inputs = -1
          | otherwise         =  0
 
-    pos' | inputUp inputs = (x + speed * cos angle', y + speed * sin angle')
+    pos' | inputUp inputs = inBounds (x + speed * cos angle', y + speed * sin angle')
          | otherwise      = (x, y)
+
+    inBounds (ax, ay) = let f = clamp (shipRadius - 0.5) (0.5 - shipRadius) in (f ax, f ay)
 
 
 stepShips :: M.Map PlayerID PlayerInput -> M.Map PlayerID Ship -> M.Map PlayerID Ship
