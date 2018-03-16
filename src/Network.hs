@@ -16,14 +16,14 @@ import System.Random
 type InTransit a = (Float, a)
 
 data Network client server = Network'
-  { netRNG                 :: StdGen
-  , netLatency             :: (Float, Float)
-  , netLossRate            :: Float
-  , netClientPackets       :: [InTransit client]
-  , netServerPackets       :: [InTransit server]
-  , netClientReadyPayloads :: [client]
-  , netServerReadyPayloads :: [server]
-  }
+    { netRNG                 :: StdGen
+    , netLatency             :: (Float, Float)
+    , netLossRate            :: Float
+    , netClientPackets       :: [InTransit client]
+    , netServerPackets       :: [InTransit server]
+    , netClientReadyPayloads :: [client]
+    , netServerReadyPayloads :: [server]
+    }
 
 
 newNetwork :: StdGen -> Network a b
@@ -57,10 +57,10 @@ clientSendPackets :: [a] -> Network a b -> Network a b
 clientSendPackets payloads = execState $ do
     maybeNewPackets <- mapM maybeBuildPacket payloads
     let newPackets = catMaybes maybeNewPackets
-    modify (\net -> 
+    modify $ \net -> 
         net 
         { netClientPackets = netClientPackets net ++ newPackets 
-        })
+        }
 
 
 clientReceivePackets :: Network a b -> [b]
@@ -71,10 +71,10 @@ serverSendPackets :: [b] -> Network a b -> Network a b
 serverSendPackets payload = execState $ do
     maybeNewPackets <- mapM maybeBuildPacket payload
     let newPackets = catMaybes maybeNewPackets
-    modify (\net -> 
+    modify $ \net -> 
         net 
         { netServerPackets = netServerPackets net ++ newPackets 
-        })
+        }
 
 
 serverReceivePackets :: Network a b -> [a]

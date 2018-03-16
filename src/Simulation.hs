@@ -28,24 +28,24 @@ type ClientPacket = (PlayerID, PlayerInput)
 type SimNetwork = Network ClientPacket ServerPacket
 
 data Simulation = Simulation'
-  { simRandom  :: StdGen
-  , simInputs  :: AllInputs
-  , simClients :: [Client]
-  , simServer  :: Server
-  , simNetwork :: SimNetwork
-  }
+    { simRandom  :: StdGen
+    , simInputs  :: AllInputs
+    , simClients :: [Client]
+    , simServer  :: Server
+    , simNetwork :: SimNetwork
+    }
 
 data Client = Client'
-  { clientPlayerID     :: PlayerID
-  , clientKeyMapping   :: KeyMapping
-  , clientInputHistory :: [PlayerInput]
-  , clientGame         :: Game
-  }
+    { clientPlayerID     :: PlayerID
+    , clientKeyMapping   :: KeyMapping
+    , clientInputHistory :: [PlayerInput]
+    , clientGame         :: Game
+    }
 
 data Server = Server'
-  { serverGameHistory  :: [Game]
-  , serverInputBuffers :: M.Map PlayerID [PlayerInput]
-  }
+    { serverGameHistory  :: [Game]
+    , serverInputBuffers :: M.Map PlayerID [PlayerInput]
+    }
 
 
 newSimulation :: StdGen -> Simulation 
@@ -54,8 +54,8 @@ newSimulation rng =
   where
     (id0, game0, rng0) = addPlayerToGame rng  newGame
     (id1, game1, rng1) = addPlayerToGame rng0 game0
-    client0 = Client' id0 Arrows [] newGame
-    client1 = Client' id1 WASD [] newGame
+    client0 = Client' id0 WASD [] newGame
+    client1 = Client' id1 Arrows [] newGame
     server = Server' [game1] M.empty
     (rng2, netRng) = split rng1
     net = newNetwork netRng
@@ -161,7 +161,7 @@ mapifyInputPackets =
         f (Just xs) = Just $  input : xs
         f  Nothing  = Just $ [input]
   in 
-  foldr buildMap M.empty
+    foldr buildMap M.empty
 
 
 scrapeInputBuffers :: M.Map PlayerID [PlayerInput] 

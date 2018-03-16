@@ -65,8 +65,7 @@ updateInputsWithEvent _ x = x
 
 readPlayerInput :: RandomGen g => AllInputs -> KeyMapping -> g -> (PlayerInput, g)
 readPlayerInput (AllInputs' allInp) mapping rng = 
-  let
+    (result, rng')
+  where
     (resultID, rng') = random rng
     result = (allInp M.! mapping) { inputID = resultID }
-  in
-  (result, rng')

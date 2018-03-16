@@ -27,16 +27,29 @@ import Utils (randomUnitAndList, clamp)
 
 type PlayerID = UUID
 
+data HitStatus = NotHit | Predicted | Confirmed
+
 data Ship = Ship'
     { shipLatestInputID :: InputID
     , shipColor         :: Color
     , shipPos           :: Point
     , shipAngle         :: Float
+    , shipHitStatus     :: HitStatus
+    , shipHitCooldown   :: Int
+    , shipGunCooldown   :: Int
+    }
+
+data Laser = Laser'
+    { laserOwner      :: PlayerID
+    , laserSource     :: Point
+    , laserAngle      :: Float
+    , laserFramesLeft :: Int
     }
 
 data Game = Game'
-    { gameFrame :: Int
-    , gameShips :: M.Map PlayerID Ship
+    { gameFrame  :: Int
+    , gameShips  :: M.Map PlayerID Ship
+    , gameLasers :: [Laser]
     }
 
 
@@ -47,12 +60,12 @@ shipRadius :: Float
 shipRadius = 15 / 350
 
 newGame :: Game
-newGame = Game' 0 M.empty
+newGame = Game' 0 M.empty []
 
 
 stepShip :: PlayerInput -> Ship -> Ship
-stepShip inputs (Ship' _ col (x, y) angle) = 
-    Ship' (inputID inputs) col pos' angle' 
+stepShip inputs (Ship' _ col (x, y) angle a b c) = 
+    Ship' (inputID inputs) col pos' angle' a b c
   where
     angle' = angle + 0.05 * turn
 
@@ -86,7 +99,7 @@ addPlayerToGame rng game = (pid, game', rng')
         game 
         { gameShips = M.insert 
             pid 
-            (Ship' pid color' (a - 0.5, b - 0.5) (2 * pi * c))
+            (Ship' pid color' (a - 0.5, b - 0.5) (2 * pi * c) NotHit 0 0)
             (gameShips game) 
         }
 
@@ -126,12 +139,12 @@ renderWindow winColor title = color winColor $ pictures
 
 
 renderServerGame :: Game -> Picture
-renderServerGame (Game' _ ships) = 
+renderServerGame (Game' _ ships _) = 
     pictures $ (renderWindow fgColor "Server") : (map drawShip . M.elems $ ships)
 
 
 renderClientGame :: PlayerID -> Game -> Picture
-renderClientGame pid (Game' _ ships) = 
+renderClientGame pid (Game' _ ships _) = 
     pictures $ (renderWindow playerColor "Client") : map drawShip (M.elems ships)
   where 
     playerColor = fromMaybe fgColor $ do 
@@ -140,7 +153,7 @@ renderClientGame pid (Game' _ ships) =
 
 
 drawShip :: Ship -> Picture
-drawShip (Ship' _ c (x,y) angle) = 
+drawShip (Ship' _ c (x,y) angle _ _ _) = 
     color c . translate x y $ rotate (-angle * 180 / pi) $ lineLoop
         [ (-0.707 * shipRadius, -0.707 * shipRadius)
         , (shipRadius, 0)
