@@ -91,9 +91,7 @@ addPlayerToGame rng game = (pid, game', rng')
   where
     ((pid, a:b:c:[]), rng') = randomUnitAndList 3 rng
 
-    color' = if length (gameShips game) `mod` 2 == 0 
-             then oneColor 
-             else twoColor
+    color' = if length (gameShips game) `mod` 2 == 0 then oneColor else twoColor
 
     game' = 
         game 

@@ -25,6 +25,7 @@ data PlayerInput = PlayerInput'
     , inputUp    :: Bool
     , inputLeft  :: Bool
     , inputRight :: Bool
+    , inputLaser :: Bool
     }
   deriving (Show)
 
@@ -35,6 +36,7 @@ data KeyMappingKeys = KeyMappingKeys'
     { mapUp    :: Key
     , mapLeft  :: Key
     , mapRight :: Key
+    , mapLaser :: Key
     }
 
 
@@ -43,7 +45,7 @@ newInputs = AllInputs' $ M.fromList [(WASD, emptyPlayerInput), (Arrows, emptyPla
 
 
 emptyPlayerInput :: PlayerInput
-emptyPlayerInput = PlayerInput' nil False False False
+emptyPlayerInput = PlayerInput' nil False False False False
 
 
 evaluateMapping :: Key -> Bool -> KeyMapping -> PlayerInput -> PlayerInput
@@ -51,10 +53,19 @@ evaluateMapping key pressed mapping inputs
     | key == mapUp    (getKeys mapping) = inputs { inputUp    = pressed }
     | key == mapLeft  (getKeys mapping) = inputs { inputLeft  = pressed }
     | key == mapRight (getKeys mapping) = inputs { inputRight = pressed }
+    | key == mapLaser (getKeys mapping) = inputs { inputLaser = pressed }
     | otherwise = inputs
   where
-    getKeys WASD   = KeyMappingKeys' (Char 'w') (Char 'a') (Char 'd')
-    getKeys Arrows = KeyMappingKeys' (SpecialKey KeyUp) (SpecialKey KeyLeft) (SpecialKey KeyRight)
+    getKeys WASD = KeyMappingKeys' 
+        (Char 'w') 
+        (Char 'a') 
+        (Char 'd') 
+        (Char 's')
+    getKeys Arrows = KeyMappingKeys' 
+        (SpecialKey KeyUp) 
+        (SpecialKey KeyLeft) 
+        (SpecialKey KeyRight) 
+        (SpecialKey KeyDown)
 
 
 updateInputsWithEvent :: Event -> AllInputs -> AllInputs

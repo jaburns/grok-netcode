@@ -13,6 +13,7 @@ import qualified Data.Map.Merge.Strict as M
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
+import ControlsUI (Controls, newControls, handleControlsEvent, renderControls)
 import Network (Network, newNetwork, updateNetwork, clientReceivePackets, clientSendPackets, 
     serverReceivePackets, serverSendPackets, clearPacketQueues)
 import Game (Game, PlayerID, newGame, gameFrame, renderClientGame, renderServerGame, addPlayerToGame, 
@@ -28,11 +29,12 @@ type ClientPacket = (PlayerID, PlayerInput)
 type SimNetwork = Network ClientPacket ServerPacket
 
 data Simulation = Simulation'
-    { simRandom  :: StdGen
-    , simInputs  :: AllInputs
-    , simClients :: [Client]
-    , simServer  :: Server
-    , simNetwork :: SimNetwork
+    { simRandom   :: StdGen
+    , simInputs   :: AllInputs
+    , simClients  :: [Client]
+    , simServer   :: Server
+    , simNetwork  :: SimNetwork
+    , simControls :: Controls
     }
 
 data Client = Client'
@@ -50,7 +52,7 @@ data Server = Server'
 
 newSimulation :: StdGen -> Simulation 
 newSimulation rng = 
-    Simulation' rng2 newInputs [client0, client1] server net
+    Simulation' rng2 newInputs [client0, client1] server net newControls
   where
     (id0, game0, rng0) = addPlayerToGame rng  newGame
     (id1, game1, rng1) = addPlayerToGame rng0 game0
@@ -64,7 +66,8 @@ newSimulation rng =
 handleSimEvent :: Event -> Simulation -> Simulation
 handleSimEvent event sim = 
     sim 
-    { simInputs = updateInputsWithEvent event (simInputs sim) 
+    { simInputs   = updateInputsWithEvent event . simInputs $ sim
+    , simControls = handleControlsEvent event . simControls $ sim
     }
 
 
@@ -185,7 +188,7 @@ viewBoxPadding = 10
 
 renderSim :: Simulation -> Picture
 renderSim sim = 
-    pictures $ server : clients
+    pictures $ (renderControls . simControls $ sim) : server : clients
   where
     server = renderServer . head . serverGameHistory . simServer $ sim
     clients = 
