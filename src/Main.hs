@@ -6,8 +6,8 @@ module Main(
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
-import Simulation(newSimulation, handleSimEvent, updateSim, renderSim)
-import Palette(bgColor)
+import Simulation
+import Palette
 
 
 window :: Display

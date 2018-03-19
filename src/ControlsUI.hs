@@ -14,8 +14,8 @@ module ControlsUI (
 
 import Graphics.Gloss.Interface.Pure.Game
 
-import Utils(clamp)
-import Palette(fgColor, oneColor)
+import Palette
+import Utils
 
 
 data Controls = Controls'
@@ -42,8 +42,8 @@ data Slider = Slider'
 
 newControls :: Controls
 newControls = Controls'
-    { ctrlBasePingSlider = newSlider 0 0 200  50 "Base Ping"
-    , ctrlVaryPingSlider = newSlider 1 0 100  30 "Ping Variance"
+    { ctrlBasePingSlider = newSlider 0 0 500  50 "Base Ping"
+    , ctrlVaryPingSlider = newSlider 1 0 200  30 "Ping Variance"
     , ctrlDropRateSlider = newSlider 2 0 100   0 "Drop Rate"
     , ctrlHistorySlider  = newSlider 3 0 350 350 "View History"
     }

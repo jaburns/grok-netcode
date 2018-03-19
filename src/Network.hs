@@ -1,7 +1,9 @@
 module Network(
     Network
+  , NetworkConfig(..)
   , newNetwork
   , updateNetwork
+  , configureNetwork
   , clientSendPackets, clientReceivePackets
   , serverSendPackets, serverReceivePackets
   , clearPacketQueues
@@ -12,28 +14,38 @@ import Control.Monad.Trans.State
 import Data.Maybe
 import System.Random
 
+import Debug.Trace
 
 type InTransit a = (Float, a)
 
 data Network client server = Network'
     { netRNG                 :: StdGen
-    , netLatency             :: (Float, Float)
-    , netLossRate            :: Float
+    , netConfig              :: NetworkConfig
     , netClientPackets       :: [InTransit client]
     , netServerPackets       :: [InTransit server]
     , netClientReadyPayloads :: [client]
     , netServerReadyPayloads :: [server]
     }
 
+data NetworkConfig = NetworkConfig
+    { netConfPing         :: Float
+    , netConfPingVariance :: Float
+    , netConfDropRate     :: Float
+    }
+
 
 newNetwork :: StdGen -> Network a b
-newNetwork rng = Network' rng (0.05, 0.025) 0 [] [] [] []
+newNetwork rng = Network' rng (NetworkConfig 0 0 0) [] [] [] []
 
 
 updateNetwork :: Float -> Network a b -> Network a b
 updateNetwork dt = execState $ do
     modify $ updatePackets dt
     modify movePacketsToReady
+
+
+configureNetwork :: NetworkConfig -> Network a b -> Network a b
+configureNetwork config net = net { netConfig = config }
 
 
 updatePackets :: Float -> Network a b -> Network a b
@@ -46,8 +58,8 @@ updatePackets dt net =
 
 
 movePacketsToReady :: Network a b -> Network a b
-movePacketsToReady (Network' rng lat loss as bs outAs outBs) =
-    Network' rng lat loss (remaining as) (remaining bs) (outAs ++ ready as) (outBs ++ ready bs)
+movePacketsToReady (Network' rng conf as bs outAs outBs) =
+    Network' rng conf (remaining as) (remaining bs) (outAs ++ ready as) (outBs ++ ready bs)
   where
     remaining = filter ((> 0) . fst)
     ready = map snd . filter ((<= 0) . fst)
@@ -93,12 +105,13 @@ maybeBuildPacket :: p -> State (Network a b) (Maybe (InTransit p))
 maybeBuildPacket payload = do
     net <- get
     let (rand0, rng0) = random $ netRNG net
-    if rand0 < (netLossRate net) then do
+    if 100 * rand0 < (netConfDropRate . netConfig $ net) then do
         put $ net { netRNG = rng0 }
         return Nothing
     else do
         let (rand1, rng1) = random rng0
         put $ net { netRNG = rng1 }
-        return $ Just (getLatency (netLatency net) rand1, payload)
+        return $ Just (getLatency (netConfig net) rand1, payload)
   where
-    getLatency (base, var) rand = base + var * rand
+    getLatency (NetworkConfig ping var _) rand = traceShow zz zz
+      where zz = (ping + var * rand) / 2000

@@ -10,9 +10,9 @@ module Input(
 ) where
 
 
-import Data.UUID(UUID, nil)
-import Graphics.Gloss.Interface.Pure.Game
+import Data.UUID
 import qualified Data.Map.Strict as M
+import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
 

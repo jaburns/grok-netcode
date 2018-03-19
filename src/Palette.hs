@@ -3,7 +3,7 @@ module Palette (
 ) where
 
 
-import Numeric(readHex)
+import Numeric
 import Graphics.Gloss.Interface.Pure.Game
 
 

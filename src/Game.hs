@@ -20,9 +20,9 @@ import Data.UUID(UUID)
 import Graphics.Gloss
 import System.Random
 
-import Input (PlayerInput, InputID, inputLeft, inputRight, inputUp, inputID)
-import Palette (oneColor, twoColor, fgColor)
-import Utils (randomUnitAndList, clamp)
+import Input
+import Palette
+import Utils
 
 
 type PlayerID = UUID

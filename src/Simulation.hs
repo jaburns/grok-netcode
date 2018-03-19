@@ -13,13 +13,10 @@ import qualified Data.Map.Merge.Strict as M
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
-import ControlsUI (Controls, newControls, handleControlsEvent, renderControls)
-import Network (Network, newNetwork, updateNetwork, clientReceivePackets, clientSendPackets, 
-    serverReceivePackets, serverSendPackets, clearPacketQueues)
-import Game (Game, PlayerID, newGame, gameFrame, renderClientGame, renderServerGame, addPlayerToGame, 
-    stepServerGame, predictClientGame)
-import Input (PlayerInput, AllInputs, KeyMapping(..), newInputs, emptyPlayerInput, updateInputsWithEvent, 
-    readPlayerInput)
+import ControlsUI 
+import Game 
+import Input 
+import Network 
 
 
 type ServerPacket = Game
@@ -67,7 +64,22 @@ handleSimEvent :: Event -> Simulation -> Simulation
 handleSimEvent event sim = 
     sim 
     { simInputs   = updateInputsWithEvent event . simInputs $ sim
-    , simControls = handleControlsEvent event . simControls $ sim
+    , simControls = controls'
+    , simNetwork  = network'
+    }
+  where
+    controls' = handleControlsEvent event . simControls $ sim
+    network'= configureNetwork 
+        (readNetConfigFromControls controls')
+        (simNetwork sim)
+
+
+readNetConfigFromControls :: Controls -> NetworkConfig
+readNetConfigFromControls controls = 
+    NetworkConfig
+    { netConfPing         = evaluateSlider . ctrlBasePingSlider $ controls
+    , netConfPingVariance = evaluateSlider . ctrlVaryPingSlider $ controls
+    , netConfDropRate     = evaluateSlider . ctrlDropRateSlider $ controls
     }
 
 
