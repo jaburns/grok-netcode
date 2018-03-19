@@ -188,8 +188,9 @@ viewBoxPadding = 10
 
 renderSim :: Simulation -> Picture
 renderSim sim = 
-    pictures $ (renderControls . simControls $ sim) : server : clients
+    pictures $ [(renderControls . simControls $ sim), games]
   where
+    games = translate 0 40 $ pictures $ server : clients
     server = renderServer . head . serverGameHistory . simServer $ sim
     clients = 
         zipWith3 renderClient [0,1..] (map clientPlayerID (simClients sim)) 
